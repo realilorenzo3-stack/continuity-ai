@@ -325,11 +325,13 @@ if [ "$(uname -s)" = Linux ] && { [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi micr
     echo "Su Windows il comando continuity non è stato creato: da PowerShell usa «wsl continuity»."
   fi
 fi
+# Il comando nel PATH: se la cartella non c'è, la riga va nel file della
+# shell. Il terminale già aperto non la rilegge da solo: lo si dice in fondo,
+# con il comando esatto (prova di Lorenzo su Ubuntu, 29 ottobre).
+continuity_rileggi=
 case ":$PATH:" in
-*":$continuity_bin:"*) echo 'Il comando continuity è già nel PATH.' ;;
+*":$continuity_bin:"*) ;;
 *)
-  # Nessuna cartella utile nel PATH: la riga viene aggiunta alla shell, altrimenti
-  # il comando resterebbe invisibile.
   if [ -n "${SHELL##*zsh}" ]; then
     continuity_rc="$HOME/.bashrc"
   else
@@ -337,36 +339,57 @@ case ":$PATH:" in
   fi
   if ! grep -q 'Continuity: comando' "$continuity_rc" 2>/dev/null; then
     printf '\n# Continuity: comando disponibile nel terminale\nexport PATH="%s:$PATH"\n' "$continuity_bin" >>"$continuity_rc"
-    echo "Aggiunto $continuity_bin al PATH in $continuity_rc"
   fi
-  echo "Apri un nuovo terminale (oppure: exec \$SHELL) e scrivi: continuity"
+  continuity_rileggi="source $continuity_rc"
   ;;
 esac
-# Le chiavi dei servizi gratuiti: su Linux servono libsecret e un
-# portachiavi; in WSL vanno nell'archivio credenziali di Windows.
+
+# Che cosa manca al sistema, con i comandi esatti per sistemarlo.
 if [ "$(uname -s)" = Linux ]; then
+  continuity_pacchetti=
   if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
-    command -v powershell.exe >/dev/null 2>&1 ||
+    command -v powershell.exe >/dev/null 2>&1 || {
+      echo
       echo "Attenzione: powershell.exe non si avvia da WSL. Serve per salvare le chiavi nell'archivio di Windows."
+    }
   elif ! command -v secret-tool >/dev/null 2>&1; then
-    echo 'Attenzione: per salvare le chiavi dei servizi gratuiti serve il portachiavi di Linux.'
-    echo '  Su Ubuntu e Debian: sudo apt install libsecret-tools gnome-keyring'
+    # Le chiavi dei servizi gratuiti: libsecret e un portachiavi.
+    continuity_pacchetti="libsecret-tools gnome-keyring"
   fi
   # La sandbox di Claude Code su Linux e WSL 2 (code.claude.com/docs/en/sandboxing):
-  # senza, Continuity non fa partire Claude (failIfUnavailable), invece di
-  # lasciarlo lavorare fuori dalla copia.
+  # senza, Continuity non fa partire Claude (failIfUnavailable).
   if ! command -v bwrap >/dev/null 2>&1 || ! command -v socat >/dev/null 2>&1; then
-    echo 'Attenzione: Claude Code lavora in sicurezza solo con bubblewrap e socat.'
-    echo '  Su Ubuntu e Debian: sudo apt install bubblewrap socat'
+    continuity_pacchetti="${continuity_pacchetti:+$continuity_pacchetti }bubblewrap socat"
+  fi
+  if [ -n "$continuity_pacchetti" ]; then
+    echo
+    echo 'Mancano dei programmi del sistema (portachiavi per le chiavi, sandbox per Claude Code). Su Ubuntu e Debian:'
+    echo "  sudo apt install $continuity_pacchetti"
   fi
   if [ "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = 1 ]; then
-    echo 'Attenzione: Ubuntu blocca bubblewrap (AppArmor). Come sbloccarlo:'
-    echo '  https://code.claude.com/docs/en/sandboxing (sezione Linux)'
+    echo
+    echo 'Ubuntu (AppArmor) blocca la sandbox di Claude Code. Per sbloccare solo bubblewrap:'
+    cat <<'APPARMOR'
+  sudo tee /etc/apparmor.d/bwrap > /dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+  include if exists <local/bwrap>
+}
+EOF
+  sudo systemctl reload apparmor
+APPARMOR
   fi
 fi
+
 echo
-echo 'Primi passi:'
-echo '  continuity setup          configurazione iniziale (in italiano: continuity configura)'
-echo '  continuity connect        verifica Codex e Claude Code'
-echo '  continuity demo           prova simulata, non consuma quota'
-echo '  continuity ui --open      pannello locale'
+echo 'Per cominciare:'
+continuity_n=1
+if [ -n "$continuity_rileggi" ]; then
+  echo "  $continuity_n. $continuity_rileggi   (rende visibile il comando in questo terminale; oppure aprine uno nuovo)"
+  continuity_n=$((continuity_n + 1))
+fi
+echo "  $continuity_n. continuity setup   configurazione iniziale (in italiano: continuity configura)"
+echo "  $((continuity_n + 1)). continuity         nella cartella di un progetto"

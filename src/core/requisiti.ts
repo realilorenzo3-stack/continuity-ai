@@ -39,6 +39,17 @@ const sondeVere: Sonde = {
   },
 };
 
+export const PROFILO_APPARMOR = `sudo tee /etc/apparmor.d/bwrap > /dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+  include if exists <local/bwrap>
+}
+EOF
+sudo systemctl reload apparmor`;
+
 export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVere): Requisito[] {
   const apt = (pacchetti: string) => `sudo apt install ${pacchetti}`;
   const elenco: Requisito[] = [];
@@ -95,7 +106,8 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
         nome: "Ubuntu lascia lavorare la sandbox",
         ok: false,
         nota: "Ubuntu (AppArmor) blocca bubblewrap: Claude Code non può partire",
-        rimedio: "https://code.claude.com/docs/en/sandboxing (sezione Linux: il profilo per bwrap)",
+        // Il profilo che lascia lavorare solo bwrap (code.claude.com/docs/en/sandboxing).
+        rimedio: PROFILO_APPARMOR,
       });
   }
   return elenco;

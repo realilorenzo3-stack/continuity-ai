@@ -4,6 +4,11 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.3 — 2026-10-29
+
+- Installazione: alla fine l'installatore dice con il comando esatto come far comparire `continuity` nel terminale già aperto (`source ~/.bashrc`), e raccoglie in un solo `sudo apt install` i programmi che mancano su Linux.
+- Ubuntu 24.04: l'installatore e la configurazione danno i comandi esatti per sbloccare la sandbox di Claude Code (profilo AppArmor per bubblewrap); nella configurazione si copiano con invio.
+
 ## 2.0.0-beta.2 — 2026-10-29
 
 Prima versione pubblica di Continuity 2.0 (anteprima).

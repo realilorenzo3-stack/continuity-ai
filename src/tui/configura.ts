@@ -49,7 +49,16 @@ export async function proponiConfigurazione(c: Contesto) {
 // Un comando da copiare: lo si mette negli appunti e lo si dice.
 function offri(c: Contesto, comando: string) {
   const copiato = copiaNegliAppunti(comando);
-  c.avvisa("info", copiato ? t(`Copiato negli appunti: ${comando}`, `Copied to clipboard: ${comando}`) : comando, 12000);
+  const righe = comando.includes("\n");
+  c.avvisa(
+    "info",
+    copiato
+      ? righe
+        ? t("Comandi copiati negli appunti: incollali in un altro terminale", "Commands copied to clipboard: paste them into another terminal")
+        : t(`Copiato negli appunti: ${comando}`, `Copied to clipboard: ${comando}`)
+      : comando,
+    12000,
+  );
 }
 
 type Passo = "lingua" | "sistema" | "abbonamenti" | "gratuiti" | "ollama" | "ordine" | "revisore";
@@ -76,7 +85,10 @@ export async function configurazione(c: Contesto, dipendenze = { controllaSistem
     const voci: Voce<Requisito | "ricontrolla" | "avanti">[] = [
       ...requisiti.map((r) => ({
         nome: `${r.ok ? "✓" : "✗"} ${t(r.nome, nomeInglese(r))}`,
-        descrizione: r.ok ? t(r.nota, notaInglese(r)) : `${t(r.nota, notaInglese(r))}${r.rimedio ? ` · ${t("invio copia", "enter copies")}: ${r.rimedio}` : ""}`,
+        // Un rimedio di più righe (il profilo di AppArmor) non si mostra intero.
+        descrizione: r.ok
+          ? t(r.nota, notaInglese(r))
+          : `${t(r.nota, notaInglese(r))}${r.rimedio ? (r.rimedio.includes("\n") ? ` · ${t("invio copia i comandi", "enter copies the commands")}` : ` · ${t("invio copia", "enter copies")}: ${r.rimedio}`) : ""}`,
         valore: r,
         gruppo: t("Il tuo sistema", "Your system"),
       })),

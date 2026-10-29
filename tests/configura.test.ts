@@ -46,6 +46,8 @@ it("il sistema su Linux: portachiavi, sandbox di Claude e il blocco di AppArmor 
   expect(nuova.map((x) => [x.id, x.ok])).toEqual([["git", true], ["chiavi", false], ["sandbox", false], ["apparmor", false]]);
   expect(nuova.find((x) => x.id === "chiavi")?.rimedio).toBe("sudo apt install libsecret-tools gnome-keyring");
   expect(nuova.find((x) => x.id === "sandbox")?.rimedio).toBe("sudo apt install bubblewrap socat");
+  // Il blocco di AppArmor: i comandi esatti, non un link.
+  expect(nuova.find((x) => x.id === "apparmor")?.rimedio).toMatch(/^sudo tee \/etc\/apparmor\.d\/bwrap[\s\S]*profile bwrap \/usr\/bin\/bwrap flags=\(unconfined\)[\s\S]*sudo systemctl reload apparmor$/);
   // secret-tool c'è ma il portachiavi non risponde (server senza desktop).
   expect(controllaSistema("linux", sonde(["git", "secret-tool", "bwrap", "socat"], { portachiaviLinuxAttivo: () => false })).find((x) => x.id === "chiavi")?.ok).toBe(false);
   const pronta = controllaSistema("linux", sonde(["git", "secret-tool", "bwrap", "socat"]));
