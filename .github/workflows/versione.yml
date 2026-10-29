@@ -1,0 +1,69 @@
+# La pagina di una versione di Continuity, quando `pnpm rilascio` manda
+# l'etichetta v<versione> nella repository pubblica (piano di pubblicazione,
+# punto 4): le prove su Ubuntu e macOS, poi il pacchetto con la sua impronta
+# (SHA-256) e le note prese da CHANGELOG.md. L'installatore e
+# `continuity update` scaricano questo pacchetto e ne controllano l'impronta.
+name: Versione
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    # Solo nella repository pubblica: nel laboratorio privato le etichette non
+    # pubblicano nulla.
+    if: github.repository == 'realilorenzo3-stack/continuity-ai'
+    strategy:
+      matrix:
+        sistema: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.sistema }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.10.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Git
+        run: |
+          git config --global user.name "Prove di Continuity"
+          git config --global user.email "prove@continuity.invalid"
+          git config --global init.defaultBranch main
+      - run: pnpm exec tsc --noEmit && pnpm exec tsc -p tsconfig.tui.json --noEmit
+      - run: pnpm build
+      - run: pnpm exec vitest run
+
+  pubblica:
+    needs: prove
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pacchetto, impronta e pagina della versione
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          versione="${GITHUB_REF_NAME#v}"
+          test "$(node -p 'require("./package.json").version')" = "$versione"
+          pacchetto="continuity-$versione.tar.gz"
+          git archive --format=tar.gz --prefix="continuity-$versione/" -o "$pacchetto" "$GITHUB_REF_NAME"
+          sha256sum "$pacchetto" > SHA256SUMS
+          # Le note di questa versione, da CHANGELOG.md.
+          awk -v v="$versione" '
+            index($0, "## " v " ") == 1 { dentro = 1; next }
+            dentro && /^## / { exit }
+            dentro { print }
+          ' CHANGELOG.md > note.md
+          anteprima=""
+          case "$versione" in *-*) anteprima="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "$pacchetto" SHA256SUMS \
+            --title "Continuity $versione" --notes-file note.md $anteprima

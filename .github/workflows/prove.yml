@@ -1,0 +1,65 @@
+# Le prove di Continuity su Linux (piano di pubblicazione, CONTINUITY_2.0.md
+# §9.1 punto 2). Sul Mac le prove si eseguono in locale; qui Ubuntu, che vale
+# anche per Windows con WSL 2. Niente chiavi, niente AI vere.
+name: Prove
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Una sola esecuzione per ramo: una modifica nuova ferma quella vecchia.
+concurrency:
+  group: prove-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Ubuntu
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.10.0
+          cache: pnpm
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      # Le prove creano repository Git e commit.
+      - name: Git
+        run: |
+          git config --global user.name "Prove di Continuity"
+          git config --global user.email "prove@continuity.invalid"
+          git config --global init.defaultBranch main
+
+      - name: Tipi
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm exec tsc -p tsconfig.tui.json --noEmit
+
+      - name: Compilazione
+        run: pnpm build
+
+      - name: Prove
+        run: pnpm exec vitest run
+
+      # L'installazione vera, in cartelle di prova, poi la disinstallazione.
+      - name: Installazione e disinstallazione
+        run: |
+          prova="$RUNNER_TEMP/installazione"
+          export CONTINUITY_DATA_DIR="$prova/dati" CONTINUITY_BIN_DIR="$prova/bin"
+          sh scripts/install.sh
+          test "$("$CONTINUITY_BIN_DIR/continuity" version)" = "$(node -p 'require("./package.json").version')"
+          printf 'ELIMINA\n' | sh scripts/uninstall.sh --all
+          test ! -e "$CONTINUITY_DATA_DIR"

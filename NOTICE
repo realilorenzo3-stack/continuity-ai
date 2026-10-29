@@ -1,0 +1,17 @@
+Continuity
+Copyright 2026 Lorenzo Reali
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by third parties, under their own
+licenses. In particular, three files of the terminal interface
+(src/tui/elementi.tsx, src/tui/campo.tsx, src/tui/dialoghi.tsx) are adapted
+from opencode (https://github.com/anomalyco/opencode), MIT License,
+Copyright (c) 2025 opencode. The full list of third-party software and the
+text of each license are in THIRD_PARTY_NOTICES.md.
+
+"Continuity" is the name of this project. The Apache License does not grant
+permission to use it as a trademark (see section 6 of the License).
+Codex, ChatGPT, Claude, Claude Code, Gemini and the other names mentioned in
+this project are trademarks of their respective owners. Continuity is not
+affiliated with, endorsed or sponsored by them.

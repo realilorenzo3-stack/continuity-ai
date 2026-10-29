@@ -1,0 +1,31 @@
+# Ciò che va nella repository pubblica (realilorenzo3-stack/continuity-ai) a
+# ogni versione: il programma, le prove, gli script e i documenti per chi usa
+# Continuity. Diario di lavoro, collaudi, ricerche e documenti interni restano
+# in questa repository privata (decisione di Lorenzo del 29 ottobre 2026).
+# Un percorso per riga; le cartelle si copiano con i soli file tracciati da Git.
+.github/workflows/prove.yml
+.github/workflows/versione.yml
+.gitignore
+.node-version
+.prettierignore
+CHANGELOG.md
+LICENSE
+NOTICE
+PRIVACY.md
+README.md
+SECURITY.md
+THIRD_PARTY_NOTICES.md
+docs/CONFORMITA.md
+docs/COPYRIGHT.md
+index.html
+package.json
+playwright.config.ts
+pnpm-lock.yaml
+schemas
+scripts
+src
+tests
+tsconfig.json
+tsconfig.tui.json
+vite.config.ts
+vitest.config.ts

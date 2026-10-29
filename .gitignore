@@ -1,0 +1,15 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+.env*
+.DS_Store
+
+.context-state.json
+
+docs/evidence/
+
+# Il sito di Continuity: progetto a sé (repo Continuity_Website), spostato qui il 13 ottobre 2026
+/sito_1/
+# Materiale per re-ingegnerizzare opencode (sorgenti di opencode e REA, piano): fuori dalla repo
+/REA/

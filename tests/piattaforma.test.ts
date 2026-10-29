@@ -1,0 +1,173 @@
+// Lo strato piattaforma (CONTINUITY_2.0.md §9.1 punto 2): che cosa fa
+// Continuity su Mac, Linux e WSL. Le parti che chiamano il sistema si provano
+// con programmi finti, così le stesse prove valgono su ogni sistema.
+import { it, expect, afterEach } from "vitest";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  argomentiCopiaVeloce,
+  cartellaBaseDati,
+  comandiAppunti,
+  comandoApriLink,
+  processiConCartellaIn,
+  senzaTerminale,
+  sistema,
+} from "../src/piattaforma.js";
+import { codificaPowerShell, portachiaviLinux, portachiaviWindows, scriptVault } from "../src/core/portachiavi.js";
+import { redact } from "../src/persistence/redact.js";
+
+const dirs: string[] = [];
+afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
+const temp = (n: string) => {
+  const d = realpathSync(mkdtempSync(join(tmpdir(), n)));
+  dirs.push(d);
+  return d;
+};
+
+it("riconosce il sistema: Mac, Linux, e WSL dal kernel di Microsoft o dalla variabile di WSL", () => {
+  expect(sistema("darwin", {}, () => "")).toBe("mac");
+  expect(sistema("linux", {}, () => "Linux version 6.8.0-45-generic (buildd@lcy02)")).toBe("linux");
+  expect(sistema("linux", {}, () => "Linux version 5.15.153.1-microsoft-standard-WSL2")).toBe("wsl");
+  expect(sistema("linux", { WSL_DISTRO_NAME: "Ubuntu" }, () => "")).toBe("wsl");
+});
+
+it("la cartella dei dati: Application Support sul Mac, XDG su Linux e WSL", () => {
+  expect(cartellaBaseDati("/Users/anna", "mac", {})).toBe("/Users/anna/Library/Application Support");
+  expect(cartellaBaseDati("/home/anna", "linux", {})).toBe("/home/anna/.local/share");
+  expect(cartellaBaseDati("/home/anna", "wsl", { XDG_DATA_HOME: "/dati/xdg" })).toBe("/dati/xdg");
+  // Un XDG_DATA_HOME relativo non vale (specifica XDG).
+  expect(cartellaBaseDati("/home/anna", "linux", { XDG_DATA_HOME: "relativa" })).toBe("/home/anna/.local/share");
+});
+
+it("link e appunti: i programmi giusti per ogni sistema, e niente se non ce n'è nessuno", () => {
+  const ci = (...nomi: string[]) => (n: string) => nomi.includes(n);
+  expect(comandoApriLink("mac", ci())).toEqual(["open", []]);
+  expect(comandoApriLink("wsl", ci("wslview", "xdg-open"))).toEqual(["wslview", []]);
+  expect(comandoApriLink("wsl", ci("explorer.exe"))).toEqual(["explorer.exe", []]);
+  expect(comandoApriLink("linux", ci("xdg-open"))).toEqual(["xdg-open", []]);
+  expect(comandoApriLink("linux", ci())).toBeUndefined();
+
+  expect(comandiAppunti("mac", ci())).toEqual({ copia: ["pbcopy", []], leggi: ["pbpaste", []] });
+  expect(comandiAppunti("wsl", ci("clip.exe", "powershell.exe")).copia).toEqual(["clip.exe", []]);
+  expect(comandiAppunti("wsl", ci("clip.exe", "powershell.exe")).leggi?.[0]).toBe("powershell.exe");
+  expect(comandiAppunti("linux", ci("xclip"))).toEqual({
+    copia: ["xclip", ["-selection", "clipboard"]],
+    leggi: ["xclip", ["-selection", "clipboard", "-o"]],
+  });
+  expect(comandiAppunti("linux", ci())).toEqual({ copia: undefined, leggi: undefined });
+});
+
+it("la copia delle dipendenze: clonazione APFS sul Mac, copia (con reflink dove c'è) su Linux, mai un collegamento", () => {
+  expect(argomentiCopiaVeloce("mac")).toEqual(["-cR"]);
+  expect(argomentiCopiaVeloce("linux")).toEqual(["-R", "--reflink=auto"]);
+  expect(argomentiCopiaVeloce("wsl")).toEqual(["-R", "--reflink=auto"]);
+});
+
+it("un processo senza terminale: «??» sul Mac, «?» su Linux", () => {
+  expect(senzaTerminale("??")).toBe(true);
+  expect(senzaTerminale("?")).toBe(true);
+  expect(senzaTerminale("ttys003")).toBe(false);
+  expect(senzaTerminale("pts/0")).toBe(false);
+});
+
+it("trova i processi che lavorano dentro una cartella (lsof sul Mac, /proc su Linux)", async () => {
+  const cartella = temp("piatt-proc-");
+  const { spawn } = await import("node:child_process");
+  const figlio = spawn("sleep", ["30"], { cwd: cartella, stdio: "ignore" });
+  try {
+    await new Promise((r) => setTimeout(r, 300));
+    expect(processiConCartellaIn(cartella)).toContain(figlio.pid);
+    expect(processiConCartellaIn(join(cartella, "altra"))).not.toContain(figlio.pid);
+  } finally {
+    figlio.kill("SIGKILL");
+  }
+});
+
+// Un «secret-tool» finto: le voci in una cartella, come libsecret.
+function secretToolFinto() {
+  const base = temp("piatt-st-");
+  const voci = join(base, "voci");
+  mkdirSync(voci);
+  const comando = join(base, "secret-tool");
+  writeFileSync(
+    comando,
+    `#!/bin/sh
+azione=$1; shift
+[ "$azione" = store ] && shift
+f="${voci}/$(printf '%s|%s' "$2" "$4" | shasum | cut -c1-16)"
+case "$azione" in
+lookup) [ -f "$f" ] || exit 1; cat "$f" ;;
+store) cat > "$f" ;;
+clear) rm -f "$f" ;;
+esac
+`,
+  );
+  chmodSync(comando, 0o755);
+  return { base, comando };
+}
+
+it("Linux: le chiavi in libsecret, entrate dallo standard input; lette, cambiate e tolte", () => {
+  const { base, comando } = secretToolFinto();
+  const chiavi = portachiaviLinux(join(base, "dati"), comando);
+  expect(chiavi.esiste("groq")).toBe(false);
+  chiavi.salva("groq", "gsk_linux_finta_1234567890");
+  expect(chiavi.leggi("groq")).toBe("gsk_linux_finta_1234567890");
+  expect(chiavi.esiste("groq")).toBe(true);
+  // Letta, la chiave non entra più nei testi conservati.
+  expect(redact("errore gsk_linux_finta_1234567890")).not.toContain("gsk_linux_finta");
+  chiavi.salva("groq", "gsk_linux_nuova_0987654321");
+  expect(chiavi.leggi("groq")).toBe("gsk_linux_nuova_0987654321");
+  expect(chiavi.togli("groq")).toBe(true);
+  expect(chiavi.leggi("groq")).toBeUndefined();
+});
+
+it("Linux senza portachiavi attivo: un errore che dice che cosa installare", () => {
+  const base = temp("piatt-st-rotto-");
+  const comando = join(base, "secret-tool");
+  writeFileSync(comando, "#!/bin/sh\necho 'Cannot autolaunch D-Bus without X11 $DISPLAY' >&2\nexit 1\n");
+  chmodSync(comando, 0o755);
+  expect(() => portachiaviLinux(join(base, "dati"), comando).leggi("groq")).toThrow(/libsecret-tools gnome-keyring/);
+  expect(portachiaviLinux(join(base, "dati"), comando).esiste("groq")).toBe(false);
+});
+
+it("WSL: lo script per l'archivio di Windows ha nome e provider fra apici, e la chiave non c'è mai", () => {
+  const script = scriptVault("salva", "Continuity · dati · 1a2b3c4d", "o'reilly");
+  expect(script).toContain("'Continuity · dati · 1a2b3c4d'");
+  expect(script).toContain("'o''reilly'");
+  expect(script).toContain("[Console]::In.ReadToEnd()");
+  expect(Buffer.from(codificaPowerShell(script), "base64").toString("utf16le")).toBe(script);
+});
+
+it("WSL: le chiavi nell'archivio di Windows attraverso powershell.exe (finto), con la chiave dallo standard input", () => {
+  const base = temp("piatt-ps-");
+  const voci = join(base, "voci");
+  mkdirSync(voci);
+  const registro = join(base, "argomenti.log");
+  // Un powershell.exe finto: decodifica lo script, riconosce l'azione e
+  // conserva le voci in una cartella, come farebbe PasswordVault.
+  const comando = join(base, "powershell.exe");
+  writeFileSync(
+    comando,
+    `#!/usr/bin/env node
+const fs = require("fs"), path = require("path");
+const argv = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(registro)}, argv.join(" ") + "\\n");
+const script = Buffer.from(argv[argv.indexOf("-EncodedCommand") + 1], "base64").toString("utf16le");
+const [, s, a] = /Retrieve\\('((?:[^']|'')*)','((?:[^']|'')*)'\\)/.exec(script) || [];
+const f = path.join(${JSON.stringify(voci)}, Buffer.from(s + "|" + a).toString("hex"));
+if (script.includes("ReadToEnd")) { fs.writeFileSync(f, fs.readFileSync(0)); process.exit(0); }
+if (script.includes("RetrievePassword")) { if (!fs.existsSync(f)) process.exit(44); process.stdout.write(fs.readFileSync(f)); process.exit(0); }
+if (script.includes("Remove")) { if (!fs.existsSync(f)) process.exit(44); fs.rmSync(f); process.exit(0); }
+`,
+  );
+  chmodSync(comando, 0o755);
+  const chiavi = portachiaviWindows(join(base, "dati"), comando);
+  expect(chiavi.leggi("nvidia")).toBeUndefined();
+  chiavi.salva("nvidia", "nvapi-wsl-finta-1234567890");
+  expect(chiavi.leggi("nvidia")).toBe("nvapi-wsl-finta-1234567890");
+  expect(chiavi.togli("nvidia")).toBe(true);
+  expect(chiavi.leggi("nvidia")).toBeUndefined();
+  // La chiave non è mai passata sulla riga di comando.
+  expect(readFileSync(registro, "utf8")).not.toContain("nvapi-wsl-finta");
+});

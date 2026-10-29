@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "handoffId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "taskId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "fromAttemptId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "toAgent": {
+      "type": "string",
+      "enum": [
+        "codex",
+        "claude",
+        "gemini",
+        "antigravity"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 3
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "switch": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "quota_exhausted"
+        },
+        "confidence": {
+          "type": "string",
+          "const": "confirmed"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "evidenceIds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "confidence",
+        "simulated",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "baseCommit": {
+          "type": "string"
+        },
+        "manifestSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "manifestRef": {
+          "type": "string",
+          "pattern": "^snapshots\\/[a-f0-9]{64}\\.json$"
+        },
+        "integrity": {
+          "type": "string",
+          "const": "verified"
+        }
+      },
+      "required": [
+        "id",
+        "baseCommit",
+        "manifestSha256",
+        "manifestRef",
+        "integrity"
+      ],
+      "additionalProperties": false
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "snapshotId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "snapshotId"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "verified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "snapshotId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "claim",
+          "status",
+          "snapshotId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "agentReported": {
+      "type": "array",
+      "items": {}
+    },
+    "decisions": {
+      "type": "array",
+      "items": {}
+    },
+    "nextActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interruptedActions": {
+      "type": "array",
+      "items": {}
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "demo-local-v1",
+            "live-subscription-fixture-v1",
+            "live-google-fixture-v1",
+            "project-worktree-v1"
+          ]
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "mock",
+              "codex",
+              "claude",
+              "gemini",
+              "antigravity"
+            ]
+          }
+        },
+        "externalEffects": {
+          "type": "string",
+          "const": "deny"
+        },
+        "maxSwitches": {
+          "type": "number",
+          "const": 1
+        },
+        "quota": {
+          "type": "string",
+          "const": "unknown"
+        }
+      },
+      "required": [
+        "id",
+        "providers",
+        "externalEffects",
+        "maxSwitches",
+        "quota"
+      ],
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "remaining": {
+          "type": "string",
+          "const": "unknown"
+        },
+        "remainingSwitches": {
+          "type": "number",
+          "const": 0
+        }
+      },
+      "required": [
+        "remaining",
+        "remainingSwitches"
+      ],
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "handoffId",
+    "projectId",
+    "runId",
+    "taskId",
+    "fromAttemptId",
+    "toAgent",
+    "createdAt",
+    "goal",
+    "constraints",
+    "switch",
+    "snapshot",
+    "acceptance",
+    "verified",
+    "agentReported",
+    "decisions",
+    "nextActions",
+    "uncertainties",
+    "interruptedActions",
+    "policy",
+    "budget",
+    "artifacts",
+    "expiresAt"
+  ],
+  "additionalProperties": false
+}
