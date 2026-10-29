@@ -4,7 +4,7 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
-## 2.0.0-beta.1 — 2026-10-29
+## 2.0.0-beta.2 — 2026-10-29
 
 Prima versione pubblica di Continuity 2.0 (anteprima).
 
@@ -14,4 +14,5 @@ Prima versione pubblica di Continuity 2.0 (anteprima).
 - macOS, Linux e Windows con WSL 2.
 - Configurazione iniziale guidata: `continuity setup` (o `continuity configura`).
 - Installazione con un comando, aggiornamento con `continuity update` (e `--indietro` per tornare alla versione di prima), disinstallazione con `continuity uninstall`.
+
 

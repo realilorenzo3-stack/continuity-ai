@@ -53,9 +53,11 @@ if (!prova) {
 const fileNote = join(radice, "CHANGELOG.md");
 const note = readFileSync(fileNote, "utf8");
 const sezione = /## Prossima versione\n([\s\S]*?)(?=\n## |\s*$)/.exec(note);
-if (!sezione || !sezione[1].trim())
+// Con --prova le note possono mancare (subito dopo un rilascio la sezione è
+// vuota): si usa una riga di prova, e la copia non si pubblica.
+if (!prova && (!sezione || !sezione[1].trim()))
   esci("Scrivi in CHANGELOG.md, sotto «## Prossima versione», che cosa cambia per chi usa Continuity.");
-const testoNote = sezione[1].trim();
+const testoNote = sezione?.[1].trim() || "Versione di prova.";
 
 // 2. Tipi, compilazione, prove.
 if (!senzaProve) {
@@ -78,7 +80,9 @@ if (!senzaProve) {
 const data = new Date().toISOString().slice(0, 10);
 const pacchetto = JSON.parse(readFileSync(join(radice, "package.json"), "utf8"));
 const nuovoPacchetto = readFileSync(join(radice, "package.json"), "utf8").replace(`"version": "${pacchetto.version}"`, `"version": "${versione}"`);
-const nuoveNote = note.replace(sezione[0], `## Prossima versione\n\n## ${versione} — ${data}\n\n${testoNote}\n`);
+const nuoveNote = sezione
+  ? note.replace(sezione[0], `## Prossima versione\n\n## ${versione} — ${data}\n\n${testoNote}\n`)
+  : `${note.trimEnd()}\n\n## ${versione} — ${data}\n\n${testoNote}\n`;
 
 // 4. La copia pubblica: solo i file tracciati dei percorsi in pubblici.txt.
 const elenco = readFileSync(join(radice, "scripts", "pubblici.txt"), "utf8")
@@ -125,7 +129,10 @@ try {
   git(["add", "-A"], cartella);
   git([...AUTORE, "commit", "-q", "--allow-empty", "-m", `Continuity ${versione}\n\n${testoNote}`], cartella);
   git([...AUTORE, "tag", "-a", `v${versione}`, "-m", `Continuity ${versione}`], cartella);
-  git(["push", "-q", "origin", "HEAD:main", `v${versione}`], cartella);
+  // Prima il ramo, poi l'etichetta, in due invii: con un invio solo GitHub a
+  // volte non avvia il flusso della versione (primo rilascio, 29 ottobre).
+  git(["push", "-q", "origin", "HEAD:main"], cartella);
+  git(["push", "-q", "origin", `v${versione}`], cartella);
   passo(`versione ${versione} mandata nella repository pubblica: GitHub prepara il pacchetto in pochi minuti`);
   console.log(`Pagina della versione: ${PUBBLICA.replace(/\.git$/, "")}/releases/tag/v${versione}`);
 } finally {
