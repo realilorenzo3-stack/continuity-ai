@@ -76,6 +76,29 @@ if (!senzaProve) {
   }
 }
 
+// 2b. Le prove su Ubuntu (GitHub Actions) per questo commit devono essere
+// verdi: sul Mac passano anche prove che su Linux falliscono (2.0.0-beta.4,
+// fermata dalle prove su Ubuntu della repository pubblica). Si aspetta che
+// finiscano, se sono in corso.
+if (!prova) {
+  const commit = git(["rev-parse", "HEAD"]);
+  const gh = (argomenti) => execFileSync("gh", argomenti, { cwd: radice, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  let id = "";
+  for (let i = 0; i < 24 && !id; i++) {
+    try {
+      id = gh(["run", "list", "--workflow", "prove.yml", "--commit", commit, "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId"]);
+    } catch {}
+    if (!id) execFileSync("sleep", ["5"]);
+  }
+  if (!id) esci("Non trovo le prove su Ubuntu per questo commit: manda prima il commit su GitHub (git push) e riprova.");
+  passo("prove su Ubuntu (GitHub Actions)");
+  try {
+    execFileSync("gh", ["run", "watch", id, "--exit-status", "--interval", "20"], { cwd: radice, stdio: "ignore" });
+  } catch {
+    esci(`Rilascio fermato: le prove su Ubuntu per questo commit non sono passate (gh run view ${id}).`);
+  }
+}
+
 // 3. Versione e note.
 const data = new Date().toISOString().slice(0, 10);
 const pacchetto = JSON.parse(readFileSync(join(radice, "package.json"), "utf8"));

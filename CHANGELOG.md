@@ -4,7 +4,7 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
-## 2.0.0-beta.4 — 2026-10-30
+## 2.0.0-beta.5 — 2026-10-30
 
 - Linux e Windows: niente più «Mac» nei testi. «Il modello sul tuo computer», «Qwen sul computer», e il tasto giusto per incollare (ctrl+shift+V su Linux e in Windows Terminal, cmd+V sul Mac).
 - `/collega`: se la chiave non si può salvare, il motivo si legge intero in un riquadro, con «Riprova a salvarla», invece di un avviso tagliato. Su Linux il motivo dice che cosa manca (secret-tool) o che il portachiavi non è attivo nella sessione, e come sistemarlo.

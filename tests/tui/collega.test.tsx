@@ -5,6 +5,7 @@
 // niente rete, niente Portachiavi vero.
 import { it, expect, vi, beforeEach } from "vitest";
 import { testRender } from "@opentui/solid";
+import { tastoIncolla } from "../../src/piattaforma.js";
 
 const salvate = new Map<string, string>();
 vi.mock("../../src/core/portachiavi.js", async (originale) => ({
@@ -80,7 +81,8 @@ it("i gratuiti in cima, la chiave incollata con cmd+V, collegato al primo colpo"
   s = await schermo();
   if (process.env.CONTINUITY_ANTEPRIMA) console.log(`\n===== chiave groq =====\n${s}`);
   expect(s).toMatch(/1\. ctrl\+o apre console\.groq\.com/);
-  expect(s).toMatch(/incolla qui la chiave \(cmd\+V\)/);
+  // Il tasto del sistema su cui girano le prove: cmd+V sul Mac, ctrl+shift+V su Linux.
+  expect(s).toContain(`incolla qui la chiave (${tastoIncolla()})`);
   // Come il Terminale con cmd+V.
   await t.mockInput.pasteBracketedText("gsk_chiave_vera_di_prova_1234567890");
   s = await schermo();
