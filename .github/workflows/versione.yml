@@ -113,5 +113,16 @@ jobs:
           ' CHANGELOG.md > note.md
           anteprima=""
           case "$versione" in *-*) anteprima="--prerelease" ;; esac
+          # La pagina esiste già (un pacchetto rifatto dopo, per esempio una
+          # macchina macOS che non arrivava): si aggiungono i pacchetti che
+          # mancano e si rifà SHA256SUMS con tutti quelli della pagina.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # I sorgenti restano quelli già pubblicati (con la loro impronta).
+            rm -f "$pacchetto"
+            gh release download "$GITHUB_REF_NAME" -p 'continuity-*.tar.gz' --skip-existing
+            sha256sum continuity-$versione*.tar.gz > SHA256SUMS
+            gh release upload "$GITHUB_REF_NAME" continuity-$versione-*.tar.gz SHA256SUMS --clobber
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" "$pacchetto" continuity-$versione-*.tar.gz SHA256SUMS \
             --title "Continuity $versione" --notes-file note.md $anteprima

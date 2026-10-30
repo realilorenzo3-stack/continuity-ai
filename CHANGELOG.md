@@ -4,6 +4,10 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.12 — 2026-10-30
+
+- Installazione e `continuity update` scelgono davvero l'ultima versione. GitHub elenca le versioni per nome («beta.9» prima di «beta.11»), e veniva installata una versione vecchia; ora si confrontano i numeri. Lo stesso vale per l'avviso di versione nuova.
+
 ## 2.0.0-beta.11 — 2026-10-30
 
 - **Installazione in pochi secondi**: ogni versione ha un pacchetto già pronto per macOS (Apple Silicon e Intel) e Linux (x64 e ARM), con Node incluso. L'installatore lo scarica, ne controlla l'impronta e lo estrae: niente npm, niente compilazione. Dove il pacchetto pronto non c'è, si installa dai sorgenti come prima.

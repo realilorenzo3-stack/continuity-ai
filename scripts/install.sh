@@ -18,6 +18,36 @@ continuity_repo="${CONTINUITY_REPO:-realilorenzo3-stack/continuity-ai}"
 continuity_api="${CONTINUITY_API:-https://api.github.com/repos/$continuity_repo}"
 continuity_rilasci="${CONTINUITY_RILASCI:-https://github.com/$continuity_repo/releases/download}"
 
+# La versione più alta pubblicata (anche le anteprime, «-beta»). GitHub elenca
+# le versioni per nome, come parole: «beta.9» prima di «beta.11». Qui si
+# confrontano i numeri come numeri (30 ottobre: l'installatore sceglieva la
+# beta.9 invece della beta.11). Lo stesso confronto di piuNuova in
+# src/core/aggiornamenti.ts.
+continuity_ultima_versione() {
+  curl -fsSL "$1/releases?per_page=100" | tr ',{' '\n\n' |
+    sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' |
+    awk '
+      function piu_nuova(a, b,   ia, ib, ba, bb, pa, pb, na, nb, n, i, X, Y) {
+        ia = index(a, "-"); ib = index(b, "-")
+        ba = ia ? substr(a, 1, ia - 1) : a; pa = ia ? substr(a, ia + 1) : ""
+        bb = ib ? substr(b, 1, ib - 1) : b; pb = ib ? substr(b, ib + 1) : ""
+        split(ba, X, "."); split(bb, Y, ".")
+        for (i = 1; i <= 3; i++) if (X[i] + 0 != Y[i] + 0) return X[i] + 0 > Y[i] + 0
+        if (pa == "" || pb == "") return pa == "" && pb != ""
+        na = split(pa, X, "."); nb = split(pb, Y, ".")
+        n = na > nb ? na : nb
+        for (i = 1; i <= n; i++) {
+          if (i > na) return 0
+          if (i > nb) return 1
+          if (X[i] ~ /^[0-9]+$/ && Y[i] ~ /^[0-9]+$/) { if (X[i] + 0 != Y[i] + 0) return X[i] + 0 > Y[i] + 0 }
+          else if (X[i] != Y[i]) return X[i] > Y[i]
+        }
+        return 0
+      }
+      { if (migliore == "" || piu_nuova($0, migliore)) migliore = $0 }
+      END { if (migliore != "") print migliore }'
+}
+
 continuity_sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | cut -d' ' -f1
@@ -44,8 +74,7 @@ if [ -n "${CONTINUITY_DA_GITHUB:-}" ] || [ -z "$continuity_source" ] || [ ! -d "
   continuity_v="${CONTINUITY_VERSIONE:-}"
   if [ -z "$continuity_v" ]; then
     # La versione più recente pubblicata (anche le anteprime, «-beta»).
-    continuity_v=$(curl -fsSL "$continuity_api/releases?per_page=1" |
-      sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1) || continuity_v=
+    continuity_v=$(continuity_ultima_versione "$continuity_api") || continuity_v=
   fi
   if [ -z "$continuity_v" ]; then
     echo "Non trovo l'ultima versione di Continuity su GitHub ($continuity_repo). Riprova più tardi." >&2

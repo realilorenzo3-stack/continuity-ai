@@ -72,12 +72,17 @@ export async function controllaAggiornamento(
   } catch {}
   let ultima = ricordata.ultima;
   try {
-    const r = await scarica(`https://api.github.com/repos/${REPOSITORY_PUBBLICA}/releases?per_page=1`, {
+    // Tutte le versioni, e si sceglie la più alta: GitHub le elenca per nome
+    // («beta.9» prima di «beta.11», 30 ottobre).
+    const r = await scarica(`https://api.github.com/repos/${REPOSITORY_PUBBLICA}/releases?per_page=100`, {
       headers: { accept: "application/vnd.github+json" },
       signal: AbortSignal.timeout(4000),
     });
     const elenco = r.ok ? ((await r.json()) as any[]) : [];
-    const tag = String(elenco?.[0]?.tag_name ?? "").replace(/^v/, "");
+    const tag = (Array.isArray(elenco) ? elenco : [])
+      .map((x) => String(x?.tag_name ?? "").replace(/^v/, ""))
+      .filter((x) => /^\d+\.\d+\.\d+/.test(x))
+      .reduce((a, b) => (!a || piuNuova(b, a) ? b : a), "");
     if (tag) ultima = tag;
     mkdirSync(cartellaDati, { recursive: true, mode: 0o700 });
     writeFileSync(file, JSON.stringify({ quando: ora, ultima }) + "\n", { mode: 0o600 });

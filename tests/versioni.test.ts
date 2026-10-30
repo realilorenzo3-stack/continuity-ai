@@ -263,3 +263,26 @@ it("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impr
   expect(guasto.stderr).toContain("non corrisponde alla sua impronta");
 }, 60_000);
 
+
+it("l'ultima versione è la più alta, non la prima che GitHub elenca (per nome «beta.9» viene prima di «beta.11»)", async () => {
+  const api = temp("ultima-api-");
+  const dati = temp("ultima-dati-");
+  mkdirSync(join(dati, "app"));
+  writeFileSync(join(dati, "app", ".continuity-version"), "2.0.0-beta.2\n");
+  const controlla = (tags: string[]) => {
+    // Come GitHub: un oggetto per riga, con altri campi intorno.
+    writeFileSync(join(api, "releases"), "[\n" + tags.map((t) => `  {"url": "x", "tag_name": "${t}", "draft": false}`).join(",\n") + "\n]\n");
+    return spawnSync(existsSync("/bin/dash") ? "/bin/dash" : "sh", ["scripts/aggiorna.sh", "--controlla"], {
+      encoding: "utf8",
+      env: { ...process.env, CONTINUITY_DATA_DIR: dati, CONTINUITY_API: `file://${api}` },
+    }).stdout;
+  };
+  expect(controlla(["v2.0.0-beta.9", "v2.0.0-beta.8", "v2.0.0-beta.11", "v2.0.0-beta.10"])).toContain("È disponibile Continuity 2.0.0-beta.11");
+  expect(controlla(["v2.0.0-beta.11", "v2.0.0", "v2.0.0-rc.1", "v1.9.9"])).toContain("È disponibile Continuity 2.0.0 ");
+  expect(controlla(["v2.0.10", "v2.0.9", "v2.1.0-beta.1"])).toContain("È disponibile Continuity 2.1.0-beta.1");
+  // L'avviso nell'interfaccia, con lo stesso confronto.
+  const app = temp("ultima-app-");
+  writeFileSync(join(app, ".continuity-version"), "2.0.0-beta.2\n");
+  const github = (async () => new Response(JSON.stringify([{ tag_name: "v2.0.0-beta.9" }, { tag_name: "v2.0.0-beta.11" }]))) as any;
+  expect(await controllaAggiornamento(temp("ultima-dati2-"), app, github)).toBe("2.0.0-beta.11");
+});
