@@ -3,12 +3,21 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createServer } from "node:net";
 
 // Il controllo d'accesso del servizio non si scavalca scrivendo «/api/» in
 // forma codificata: Fastify decodifica il percorso prima di scegliere la rotta.
 it("senza credenziali le rotte /api sono chiuse anche con il percorso codificato", async () => {
   const dati = mkdtempSync(join(tmpdir(), "continuity-accesso-"));
-  const porta = 4800 + Math.floor(Math.random() * 400);
+  // Una porta libera data dal sistema: fra 4800 e 5199 c'erano anche la 5060
+  // e la 5061, che fetch rifiuta («bad port»), e la prova ogni tanto falliva.
+  const porta = await new Promise<number>((ok) => {
+    const s = createServer();
+    s.listen(0, "127.0.0.1", () => {
+      const p = (s.address() as { port: number }).port;
+      s.close(() => ok(p));
+    });
+  });
   const servizio = spawn(
     process.execPath,
     ["--import", "tsx", "src/server/main.ts"],

@@ -53,9 +53,30 @@ if [ -n "${CONTINUITY_DA_GITHUB:-}" ] || [ -z "$continuity_source" ] || [ ! -d "
   fi
   continuity_tmp=$(mktemp -d)
   trap 'rm -rf "$continuity_tmp"' EXIT
+  curl -fsSL "$continuity_rilasci/v$continuity_v/SHA256SUMS" -o "$continuity_tmp/SHA256SUMS"
+  # Il pacchetto già pronto per questo sistema, se la versione lo ha
+  # (30 ottobre: installazione in pochi secondi, come opencode): niente npm,
+  # niente compilazione. Altrimenti i sorgenti, come prima.
+  case "$(uname -s)" in Darwin) continuity_os=darwin ;; *) continuity_os=linux ;; esac
+  case "$(uname -m)" in arm64 | aarch64) continuity_arch=arm64 ;; *) continuity_arch=x64 ;; esac
+  continuity_piattaforma="${CONTINUITY_PIATTAFORMA:-$continuity_os-$continuity_arch}"
+  continuity_pronto="continuity-$continuity_v-$continuity_piattaforma"
+  continuity_atteso=$(sed -n "s/^\([0-9a-f]\{64\}\)  $continuity_pronto\.tar\.gz\$/\1/p" "$continuity_tmp/SHA256SUMS")
+  if [ -n "$continuity_atteso" ]; then
+    echo "Scarico Continuity $continuity_v (pronto per $continuity_piattaforma)"
+    curl -fsSL "$continuity_rilasci/v$continuity_v/$continuity_pronto.tar.gz" -o "$continuity_tmp/pronto.tar.gz"
+    if [ "$continuity_atteso" != "$(continuity_sha256 "$continuity_tmp/pronto.tar.gz")" ]; then
+      echo "Il pacchetto scaricato non corrisponde alla sua impronta (SHA-256): installazione interrotta." >&2
+      exit 1
+    fi
+    tar -xzf "$continuity_tmp/pronto.tar.gz" -C "$continuity_tmp"
+    continuity_esito=0
+    CONTINUITY_DA_GITHUB= CONTINUITY_PRONTO="$continuity_tmp/$continuity_pronto" \
+      sh "$continuity_tmp/$continuity_pronto/app/scripts/install.sh" || continuity_esito=$?
+    exit "$continuity_esito"
+  fi
   echo "Scarico Continuity $continuity_v"
   curl -fsSL "$continuity_rilasci/v$continuity_v/continuity-$continuity_v.tar.gz" -o "$continuity_tmp/pacchetto.tar.gz"
-  curl -fsSL "$continuity_rilasci/v$continuity_v/SHA256SUMS" -o "$continuity_tmp/SHA256SUMS"
   continuity_atteso=$(sed -n "s/^\([0-9a-f]\{64\}\)  continuity-$continuity_v\.tar\.gz\$/\1/p" "$continuity_tmp/SHA256SUMS")
   if [ -z "$continuity_atteso" ] || [ "$continuity_atteso" != "$(continuity_sha256 "$continuity_tmp/pacchetto.tar.gz")" ]; then
     echo "Il pacchetto scaricato non corrisponde alla sua impronta (SHA-256): installazione interrotta." >&2
@@ -170,7 +191,16 @@ continuity_scarica_node() {
     --prefix "$continuity_toolchain" --no-audit --no-fund --save-exact "pnpm@$continuity_pnpm" >/dev/null
   ln -sf ../../node/bin/node "$continuity_toolchain/node_modules/.bin/node"
 }
-if [ ! -x "$continuity_toolchain/node_modules/.bin/node" ] ||
+if [ -n "${CONTINUITY_PRONTO:-}" ]; then
+  # Il pacchetto già pronto porta il suo Node: si copia e basta.
+  rm -rf "$continuity_toolchain/node"
+  mkdir -p "$continuity_toolchain/node_modules/.bin"
+  # Spostare (stesso disco: istantaneo) invece di copiare migliaia di file;
+  # la cartella temporanea si cancella comunque alla fine.
+  mv "$CONTINUITY_PRONTO/node" "$continuity_toolchain/node" 2>/dev/null ||
+    cp -R "$CONTINUITY_PRONTO/node" "$continuity_toolchain/node"
+  ln -sf ../../node/bin/node "$continuity_toolchain/node_modules/.bin/node"
+elif [ ! -x "$continuity_toolchain/node_modules/.bin/node" ] ||
   [ ! -x "$continuity_toolchain/node_modules/.bin/pnpm" ]; then
   echo "Installazione toolchain: Node $continuity_node, pnpm $continuity_pnpm"
   if ! continuity_scarica_node; then
@@ -186,55 +216,64 @@ fi
 PATH="$continuity_toolchain/node_modules/.bin:$PATH"
 export PATH
 
-echo 'Copia dell applicazione'
-rm -rf "$continuity_app.new"
-mkdir -p "$continuity_app.new"
-# Gli avvisi di terzi, la privacy e la sicurezza vanno con il programma
-# installato (licenze MIT di opencode e delle dipendenze, ricerca legale del
-# 28 ottobre 2026).
-# tsconfig.tui.json mancava: la compilazione dell'installata falliva
-# (settimo collaudo, CT-2.0-601). Ogni file dell'elenco è obbligatorio.
-for item in package.json pnpm-lock.yaml tsconfig.json tsconfig.tui.json vite.config.ts \
-  vitest.config.ts playwright.config.ts index.html .node-version \
-  README.md LICENSE NOTICE THIRD_PARTY_NOTICES.md PRIVACY.md SECURITY.md \
-  src tests schemas scripts piattaforme; do
-  if [ ! -e "$continuity_source/$item" ]; then
-    echo "Manca $item nei sorgenti: installazione interrotta." >&2
-    exit 2
-  fi
-  cp -R "$continuity_source/$item" "$continuity_app.new/"
-done
-# I documenti a cui rimandano README e PRIVACY.
-mkdir -p "$continuity_app.new/docs"
-for item in CONFORMITA.md COPYRIGHT.md; do
-  [ -e "$continuity_source/docs/$item" ] && cp "$continuity_source/docs/$item" "$continuity_app.new/docs/"
-done
-printf '%s\n' "$continuity_version" >"$continuity_app.new/.continuity-version"
-# Quando è stata fatta l'ultima modifica a ciò che si installa: la schermata
-# iniziale lo mostra, così si capisce subito se la versione è quella aggiornata.
-continuity_installata=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-if git -C "$continuity_source" rev-parse --git-dir >/dev/null 2>&1; then
-  continuity_commit=$(git -C "$continuity_source" rev-parse --short HEAD 2>/dev/null || true)
-  continuity_data_commit=$(git -C "$continuity_source" log -1 --format=%cI 2>/dev/null || true)
-  continuity_sporca=false
-  [ -n "$(git -C "$continuity_source" status --porcelain -- src scripts schemas package.json 2>/dev/null)" ] && continuity_sporca=true
-  printf '{"commit":"%s","dataCommit":"%s","nonRegistrate":%s,"installataIl":"%s"}\n' \
-    "$continuity_commit" "$continuity_data_commit" "$continuity_sporca" "$continuity_installata" \
-    >"$continuity_app.new/.continuity-build.json"
+if [ -n "${CONTINUITY_PRONTO:-}" ]; then
+  # Il programma è già pronto (dipendenze e pannello web compilati): si copia.
+  echo 'Copia dell applicazione (già pronta)'
+  rm -rf "$continuity_app.new"
+  mv "$CONTINUITY_PRONTO/app" "$continuity_app.new" 2>/dev/null ||
+    cp -R "$CONTINUITY_PRONTO/app" "$continuity_app.new"
 else
-  printf '{"installataIl":"%s"}\n' "$continuity_installata" >"$continuity_app.new/.continuity-build.json"
-fi
+  echo 'Copia dell applicazione'
+  rm -rf "$continuity_app.new"
+  mkdir -p "$continuity_app.new"
+  # Gli avvisi di terzi, la privacy e la sicurezza vanno con il programma
+  # installato (licenze MIT di opencode e delle dipendenze, ricerca legale del
+  # 28 ottobre 2026).
+  # tsconfig.tui.json mancava: la compilazione dell'installata falliva
+  # (settimo collaudo, CT-2.0-601). Ogni file dell'elenco è obbligatorio.
+  for item in package.json pnpm-lock.yaml tsconfig.json tsconfig.tui.json vite.config.ts \
+    vitest.config.ts playwright.config.ts index.html .node-version \
+    README.md LICENSE NOTICE THIRD_PARTY_NOTICES.md PRIVACY.md SECURITY.md \
+    src tests schemas scripts piattaforme; do
+    if [ ! -e "$continuity_source/$item" ]; then
+      echo "Manca $item nei sorgenti: installazione interrotta." >&2
+      exit 2
+    fi
+    cp -R "$continuity_source/$item" "$continuity_app.new/"
+  done
+  # I documenti a cui rimandano README e PRIVACY.
+  mkdir -p "$continuity_app.new/docs"
+  for item in CONFORMITA.md COPYRIGHT.md; do
+    [ -e "$continuity_source/docs/$item" ] && cp "$continuity_source/docs/$item" "$continuity_app.new/docs/"
+  done
+  printf '%s\n' "$continuity_version" >"$continuity_app.new/.continuity-version"
+  # Quando è stata fatta l'ultima modifica a ciò che si installa: la schermata
+  # iniziale lo mostra, così si capisce subito se la versione è quella aggiornata.
+  continuity_installata=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  if git -C "$continuity_source" rev-parse --git-dir >/dev/null 2>&1; then
+    continuity_commit=$(git -C "$continuity_source" rev-parse --short HEAD 2>/dev/null || true)
+    continuity_data_commit=$(git -C "$continuity_source" log -1 --format=%cI 2>/dev/null || true)
+    continuity_sporca=false
+    [ -n "$(git -C "$continuity_source" status --porcelain -- src scripts schemas package.json 2>/dev/null)" ] && continuity_sporca=true
+    printf '{"commit":"%s","dataCommit":"%s","nonRegistrate":%s,"installataIl":"%s"}\n' \
+      "$continuity_commit" "$continuity_data_commit" "$continuity_sporca" "$continuity_installata" \
+      >"$continuity_app.new/.continuity-build.json"
+  else
+    printf '{"installataIl":"%s"}\n' "$continuity_installata" >"$continuity_app.new/.continuity-build.json"
+  fi
 
-echo 'Installazione dipendenze'
-(cd "$continuity_app.new" && pnpm install --frozen-lockfile --silent)
-echo 'Compilazione'
-# L'uscita si tiene in un file: se la compilazione fallisce se ne mostra la
-# fine, invece di uscire senza dire perché.
-continuity_log="$continuity_data/installazione.log"
-if ! (cd "$continuity_app.new" && pnpm build) >"$continuity_log" 2>&1; then
-  echo "Compilazione non riuscita. Ultime righe (tutto in $continuity_log):" >&2
-  tail -n 20 "$continuity_log" >&2
-  exit 1
+  echo 'Installazione dipendenze'
+  (cd "$continuity_app.new" && pnpm install --frozen-lockfile --silent)
+  echo 'Compilazione'
+  # L'uscita si tiene in un file: se la compilazione fallisce se ne mostra la
+  # fine, invece di uscire senza dire perché.
+  continuity_log="$continuity_data/installazione.log"
+  if ! (cd "$continuity_app.new" && pnpm build) >"$continuity_log" 2>&1; then
+    echo "Compilazione non riuscita. Ultime righe (tutto in $continuity_log):" >&2
+    tail -n 20 "$continuity_log" >&2
+    exit 1
+  fi
+
 fi
 
 # La versione di prima resta da parte: «continuity update --indietro» la
@@ -242,6 +281,8 @@ fi
 rm -rf "$continuity_data/app.precedente"
 [ -d "$continuity_app" ] && mv "$continuity_app" "$continuity_data/app.precedente"
 mv "$continuity_app.new" "$continuity_app"
+# Il pacchetto pronto è stato spostato: i suoi file ora stanno qui.
+[ -n "${CONTINUITY_PRONTO:-}" ] && continuity_source="$continuity_app"
 
 # Un servizio già in esecuzione continuerebbe a far girare la versione vecchia:
 # viene fermato qui, i dati restano dove sono.
@@ -341,7 +382,8 @@ case ":$PATH:" in
     continuity_rc="$HOME/.zshrc"
   fi
   if ! grep -q 'Continuity: comando' "$continuity_rc" 2>/dev/null; then
-    printf '\n# Continuity: comando disponibile nel terminale\nexport PATH="%s:$PATH"\n' "$continuity_bin" >>"$continuity_rc"
+    printf '\n# Continuity: comando disponibile nel terminale\nexport PATH="%s:$PATH"\n' "$continuity_bin" >>"$continuity_rc" 2>/dev/null ||
+      echo "Non riesco a scrivere in $continuity_rc: aggiungi tu $continuity_bin al PATH."
   fi
   continuity_rileggi="source $continuity_rc"
   ;;

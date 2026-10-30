@@ -33,12 +33,13 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
 - **Claude senza sandbox**, dove manca (Linux senza bubblewrap, AppArmor che lo blocca), lavora lo stesso e chiede il permesso per ogni comando; `/permessi` → «Lavora libero (Bypass permissions)» non chiede più nulla. Fatto nella 2.0.0-beta.10, da provare su Ubuntu.
 - **Chiavi**: file protetto dove l'archivio del sistema manca. Fatto, da provare.
 - **Codex installato insieme a Continuity**, con l'installatore ufficiale. Fatto, da provare.
-- **Installazione in pochi secondi, come opencode**: pacchetto già pronto per ogni sistema (in corso, lavoro 0 qui sotto). Poi **Windows nativo, senza WSL** (lavoro 7).
+- **Installazione in pochi secondi, come opencode**: pacchetto già pronto per ogni sistema (fatto, da verificare al primo rilascio: lavoro 0). Poi **Windows nativo, senza WSL** (lavoro 7).
 
 ## Lavori aperti, in ordine
 
 ### 0. Pacchetto già pronto (installazione in pochi secondi)
-- [ ] GitHub Actions prepara per ogni versione un archivio per sistema (macOS arm64 e x64, Linux x64 e arm64) con Node, dipendenze e programma già pronti; `install.sh` lo scarica, ne controlla l'impronta, lo estrae: niente npm, niente compilazione.
+- [x] Fatto il 30 ottobre (`scripts/pacchetto.sh`, lavoro «pacchetti» di `versione.yml`, ramo `CONTINUITY_PRONTO` di `install.sh`): sul Mac l'installazione dal pacchetto pronto richiede circa 4 secondi più il download (69 MB).
+- [ ] Verificare il primo rilascio con i pacchetti: che i quattro sistemi di GitHub (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `macos-15-intel`) li preparino, e un'installazione vera su Ubuntu (x64) dal pacchetto pronto.
 
 
 ### 1. Preparare il PC Windows per lo sviluppo

@@ -4,7 +4,9 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
-## 2.0.0-beta.10 — 2026-10-30
+## 2.0.0-beta.11 — 2026-10-30
+
+- **Installazione in pochi secondi**: ogni versione ha un pacchetto già pronto per macOS (Apple Silicon e Intel) e Linux (x64 e ARM), con Node incluso. L'installatore lo scarica, ne controlla l'impronta e lo estrae: niente npm, niente compilazione. Dove il pacchetto pronto non c'è, si installa dai sorgenti come prima.
 
 - **Claude Code anche senza sandbox**: dove la sandbox del sistema non c'è (Linux senza bubblewrap, Ubuntu che la blocca), Claude lavora lo stesso e chiede il permesso per ogni comando, invece di non partire.
 - **`/permessi`** (in inglese `/permissions`): «Chiede il permesso» oppure «Lavora libero (Bypass permissions)», con cui Claude non chiede mai nulla. Vale per tutte le sessioni.

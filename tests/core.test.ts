@@ -3,6 +3,7 @@ import {
   mkdtempSync,
   writeFileSync,
   readFileSync,
+  existsSync,
   rmSync,
   mkdirSync,
   symlinkSync,
@@ -314,7 +315,11 @@ describe("Guardie e sicurezza aggiuntive", () => {
       `import {spawn} from 'node:child_process';const child=spawn(process.execPath,['-e',${JSON.stringify("const fs=require('fs');setInterval(()=>fs.appendFileSync(" + JSON.stringify(file) + ",'x'),30)")}],{stdio:'ignore'});setTimeout(()=>process.exit(0),100);`,
     );
     const child = launch(process.execPath, [script], dir, join(dir, "receipt"));
-    await new Promise((r) => setTimeout(r, 250));
+    // Si aspetta che il figlio scriva davvero (padre già uscito): con un
+    // tempo fisso di 250 ms, su una macchina lenta (macOS di GitHub, 30
+    // ottobre) il file non esisteva ancora e la prova falliva senza motivo.
+    for (let i = 0; i < 200 && !(existsSync(file) && readFileSync(file, "utf8").length >= 3); i++)
+      await new Promise((r) => setTimeout(r, 50));
     await stop(child);
     const before = readFileSync(file, "utf8");
     await new Promise((r) => setTimeout(r, 100));

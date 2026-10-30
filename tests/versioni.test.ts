@@ -221,3 +221,45 @@ it("l'installazione installa anche Codex, con il suo installatore ufficiale e se
   expect(existsSync(join(casa, "codex-chiamato"))).toBe(false);
 }, 60_000);
 
+it("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impronta e lo installa senza npm né compilazione", () => {
+  const g = github();
+  // Un pacchetto pronto finto: il programma copiato, un «node» finto.
+  const base = temp("pronto-");
+  const v = "9.9.20";
+  const nome = `continuity-${v}-prova-x64`;
+  execFileSync("node", ["scripts/rilascio.mjs", v, "--prova", join(base, nome, "app"), "--senza-prove"], { stdio: "ignore" });
+  writeFileSync(join(base, nome, "app", ".continuity-version"), `${v}\n`);
+  mkdirSync(join(base, nome, "node", "bin"), { recursive: true });
+  writeFileSync(join(base, nome, "node", "bin", "node"), "#!/bin/sh\nexit 0\n");
+  chmodSync(join(base, nome, "node", "bin", "node"), 0o755);
+  const dove = join(g.rilasci, `v${v}`);
+  mkdirSync(dove, { recursive: true });
+  execFileSync("tar", ["-czf", join(dove, `${nome}.tar.gz`), "-C", base, nome]);
+  writeFileSync(join(dove, "SHA256SUMS"), `${sha256(join(dove, `${nome}.tar.gz`))}  ${nome}.tar.gz\n`);
+  writeFileSync(join(g.api, "releases"), JSON.stringify([{ tag_name: `v${v}` }]));
+  // Nessuna toolchain: un pnpm chiamato per sbaglio farebbe fallire.
+  const dati = join(temp("pronto-dati-"), "dati");
+  const lanciatori = join(temp("pronto-bin-"), "bin");
+  const ambiente = {
+    ...process.env,
+    CONTINUITY_DATA_DIR: dati,
+    CONTINUITY_BIN_DIR: lanciatori,
+    CONTINUITY_API: `file://${g.api}`,
+    CONTINUITY_RILASCI: `file://${g.rilasci}`,
+    CONTINUITY_PIATTAFORMA: "prova-x64",
+    PATH: `/usr/bin:/bin`,
+  };
+  const r = spawnSync(existsSync("/bin/dash") ? "/bin/dash" : "sh", ["-s"], { cwd: temp("pronto-altrove-"), input: readFileSync("scripts/install.sh"), env: ambiente, encoding: "utf8" });
+  expect(r.status, r.stderr + r.stdout).toBe(0);
+  expect(r.stdout).toContain(`Scarico Continuity ${v} (pronto per prova-x64)`);
+  expect(r.stdout).toContain("Copia dell applicazione (già pronta)");
+  expect(r.stdout).not.toContain("Installazione dipendenze");
+  expect(execFileSync(join(lanciatori, "continuity"), ["version"], { env: ambiente, encoding: "utf8" }).trim()).toBe(v);
+  expect(existsSync(join(dati, "toolchain", "node", "bin", "node"))).toBe(true);
+  // Un pacchetto pronto alterato si rifiuta.
+  writeFileSync(join(dove, "SHA256SUMS"), `${"0".repeat(64)}  ${nome}.tar.gz\n`);
+  const guasto = spawnSync("sh", ["-s"], { cwd: temp("pronto-altrove-"), input: readFileSync("scripts/install.sh"), env: { ...ambiente, CONTINUITY_DATA_DIR: join(temp("pronto-dati2-"), "d") }, encoding: "utf8" });
+  expect(guasto.status).not.toBe(0);
+  expect(guasto.stderr).toContain("non corrisponde alla sua impronta");
+}, 60_000);
+

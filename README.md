@@ -76,7 +76,7 @@ Su **Windows**, in PowerShell (Continuity gira in WSL 2, che il comando aiuta ad
 irm https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.ps1 | iex
 ```
 
-Serve git. L'installatore scarica l'ultima versione pubblicata e ne controlla l'impronta (SHA-256), scarica Node da nodejs.org (controllato anche lui; il Node del sistema non viene toccato) e crea il comando `continuity`. Non chiede sudo né permessi di amministratore. Su Windows crea anche il comando `continuity` per PowerShell, che apre Continuity in WSL nella cartella in cui ti trovi.
+Serve git. L'installatore scarica l'ultima versione pubblicata, già pronta per il tuo sistema (macOS Apple Silicon e Intel, Linux x64 e ARM): Node incluso, niente da compilare. Ne controlla l'impronta (SHA-256), la estrae in pochi secondi e crea il comando `continuity`. Installa anche Codex (gratuito, senza abbonamento), che serve ai servizi gratuiti. Non chiede sudo né permessi di amministratore. Su Windows crea anche il comando `continuity` per PowerShell, che apre Continuity in WSL nella cartella in cui ti trovi.
 
 Poi, una volta:
 

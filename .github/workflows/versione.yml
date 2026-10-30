@@ -41,22 +41,70 @@ jobs:
       - run: pnpm build
       - run: pnpm exec vitest run
 
-  pubblica:
+  # Il pacchetto già pronto per ogni sistema (30 ottobre: installazione in
+  # pochi secondi, come opencode). Ognuno sul suo sistema, perché le parti
+  # native delle dipendenze sono di quel sistema. Un pacchetto che non si
+  # prepara non ferma la versione: per quel sistema l'installatore usa i
+  # sorgenti, come prima.
+  pacchetti:
     needs: prove
+    if: github.repository == 'realilorenzo3-stack/continuity-ai'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sistema: ubuntu-24.04
+            piattaforma: linux-x64
+          - sistema: ubuntu-24.04-arm
+            piattaforma: linux-arm64
+          - sistema: macos-15
+            piattaforma: darwin-arm64
+          - sistema: macos-15-intel
+            piattaforma: darwin-x64
+    runs-on: ${{ matrix.sistema }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.10.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vite build
+      - name: Pacchetto pronto
+        run: sh scripts/pacchetto.sh "${GITHUB_REF_NAME#v}" "${{ matrix.piattaforma }}" pacchetti
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pacchetto-${{ matrix.piattaforma }}
+          path: pacchetti/*.tar.gz
+          retention-days: 3
+
+  pubblica:
+    needs: [prove, pacchetti]
+    # Anche se un pacchetto pronto manca, purché le prove siano passate.
+    if: ${{ !cancelled() && needs.prove.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: pacchetto-*
+          merge-multiple: true
       - name: Pacchetto, impronta e pagina della versione
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          shopt -s nullglob
           versione="${GITHUB_REF_NAME#v}"
           test "$(node -p 'require("./package.json").version')" = "$versione"
           pacchetto="continuity-$versione.tar.gz"
           git archive --format=tar.gz --prefix="continuity-$versione/" -o "$pacchetto" "$GITHUB_REF_NAME"
-          sha256sum "$pacchetto" > SHA256SUMS
+          sha256sum "$pacchetto" continuity-$versione-*.tar.gz > SHA256SUMS
           # Le note di questa versione, da CHANGELOG.md.
           awk -v v="$versione" '
             index($0, "## " v " ") == 1 { dentro = 1; next }
@@ -65,5 +113,5 @@ jobs:
           ' CHANGELOG.md > note.md
           anteprima=""
           case "$versione" in *-*) anteprima="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" "$pacchetto" SHA256SUMS \
+          gh release create "$GITHUB_REF_NAME" "$pacchetto" continuity-$versione-*.tar.gz SHA256SUMS \
             --title "Continuity $versione" --notes-file note.md $anteprima
