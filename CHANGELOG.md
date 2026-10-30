@@ -4,6 +4,11 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.7 — 2026-10-30
+
+- Scrivendo a un'AI che non è collegata (manca la chiave, il login dell'abbonamento o il programma), Continuity apre un riquadro: «Collegalo adesso» porta direttamente a `/collega` per quel servizio. Il messaggio è uno solo e dice sempre il comando.
+- `/collega` con Codex o Claude Code apre il loro login ufficiale (che apre il browser) senza uscire da Continuity, e al ritorno controlla che il collegamento sia riuscito. Se il programma non è installato, il comando ufficiale per installarlo va negli appunti.
+
 ## 2.0.0-beta.6 — 2026-10-30
 
 - L'avviso di versione nuova si controlla a ogni apertura di Continuity (prima una volta al giorno, e una versione uscita da poco poteva non comparire) e resta a schermo 30 secondi.

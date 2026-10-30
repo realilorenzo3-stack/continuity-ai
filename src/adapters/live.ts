@@ -14,6 +14,7 @@ import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { PROVIDER, type ProviderNoto } from "../core/provider.js";
+import { nonCollegato } from "../core/collegamento.js";
 
 export const TEMPO_MASSIMO_STRUMENTO_MS = 180_000;
 // Deliberately omit API keys, custom base URLs, cloud provider selectors and OAuth
@@ -273,14 +274,18 @@ export function requisitiProvider(
   if (profilo.accesso === "chiave") {
     const chiave = chiavi.leggi(profilo.id);
     if (!chiave)
-      throw Error(
-        `Manca la chiave di ${profilo.id}: collegala con «continuity collega ${profilo.id}» o «/collega ${profilo.id}»`,
-      );
+      throw nonCollegato(profilo, "chiave");
     return chiave;
   }
   if (profilo.accesso === "locale") return undefined;
   if (profilo.motore === "codex") {
-    const codex = spawnSync(resolveProvider("codex", root).path, ["login", "status"], {
+    let binario: string;
+    try {
+      binario = resolveProvider("codex", root).path;
+    } catch {
+      throw nonCollegato(profilo, "installa");
+    }
+    const codex = spawnSync(binario, ["login", "status"], {
       env,
       encoding: "utf8",
       timeout: 10000,
@@ -291,15 +296,19 @@ export function requisitiProvider(
         "Logged in using ChatGPT",
       )
     )
-      throw Error(
-        "Serve il login di Codex con l'abbonamento ChatGPT: «continuity connect codex». Per una chiave API usa il provider openai.",
-      );
+      throw nonCollegato(profilo, "login");
     return undefined;
   }
   let stato: any;
+  let binarioClaude: string;
+  try {
+    binarioClaude = resolveProvider("claude", root).path;
+  } catch {
+    throw nonCollegato(profilo, "installa");
+  }
   try {
     stato = JSON.parse(
-      execFileSync(resolveProvider("claude", root).path, ["auth", "status"], {
+      execFileSync(binarioClaude, ["auth", "status"], {
         env,
         encoding: "utf8",
         timeout: 10000,
@@ -307,16 +316,14 @@ export function requisitiProvider(
       }),
     );
   } catch {
-    throw Error("Claude non autenticato: «continuity connect claude»");
+    throw nonCollegato(profilo, "login");
   }
   if (
     !stato.loggedIn ||
     stato.authMethod !== "claude.ai" ||
     stato.apiProvider !== "firstParty"
   )
-    throw Error(
-      "Serve il login di Claude Code con l'abbonamento Claude. Per una chiave API usa il provider anthropic.",
-    );
+    throw nonCollegato(profilo, "login");
   return undefined;
 }
 // I modelli si scelgono durante la sessione: qui si passa soltanto il nome, e

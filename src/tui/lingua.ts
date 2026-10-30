@@ -404,6 +404,10 @@ export function traduci(testo: string | undefined): string | undefined {
   const prefissi: [RegExp, string][] = [
     [/^Passo (\d+) di (\d+)$/, "Step $1 of $2"],
     [/^Passo (\d+): (.+)$/, "Step $1: $2"],
+    // Un'AI non collegata (src/core/collegamento.ts).
+    [/^(.+) non è collegato al tuo abbonamento: collegalo con \/collega (\S+)$/, "$1 is not connected to your subscription: connect it with /connect $2"],
+    [/^(.+) non è collegato: collegalo con \/collega (\S+)$/, "$1 is not connected: connect it with /connect $2"],
+    [/^(.+) non è installato su questo computer: \/collega (\S+) spiega come installarlo e collegarlo$/, "$1 is not installed on this computer: /connect $2 explains how to install and connect it"],
     [/^(\d+)\. (.+)$/, "$1. $2"],
     [/^Flusso «(.+)»\. Esc lo lascia in attesa: invio lo riapre\.$/, "Workflow ‘$1’. Esc leaves it waiting; enter opens it again."],
     [/^Tema (chiaro|scuro): vale dalla prossima apertura di Continuity$/, "Theme $1: applies the next time you open Continuity"],

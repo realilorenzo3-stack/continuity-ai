@@ -136,6 +136,7 @@ import {
   type Ragionamento,
 } from "../adapters/live.js";
 import { ambienteGit } from "../git/ambiente.js";
+import { nonCollegato } from "./collegamento.js";
 import { randomUUID } from "node:crypto";
 import {
   execFileSync,
@@ -1039,7 +1040,7 @@ export class Engine {
     if (p.gratis === "prezzo-zero") await this.assicuraCatalogo();
     const chiave = p.accesso === "chiave" ? this.chiavi.leggi(p.id) : undefined;
     if (p.accesso === "chiave" && !chiave && !p.prova?.pubblica && p.id !== "openrouter")
-      throw Error(`Collega prima ${p.id}: /collega ${p.id}`);
+      throw nonCollegato(p, "chiave");
     this.leggiMemoriaModelli();
     const scartati = this.modelliScartati.get(p.id);
     const elenco = (await modelliGratuiti(p, chiave, this.catalogoModelli, this.scaricaGratuiti)).filter((m) => !scartati?.has(m.id));
@@ -1052,7 +1053,7 @@ export class Engine {
     const p = providerNoto(id);
     if (!p?.diretto) throw Error(`${id} non si chiama direttamente`);
     const chiave = p.accesso === "chiave" ? this.chiavi.leggi(p.id) : undefined;
-    if (p.accesso === "chiave" && !chiave) throw Error(`Collega prima ${p.id}: /collega ${p.id}`);
+    if (p.accesso === "chiave" && !chiave) throw nonCollegato(p, "chiave");
     const inizio = Date.now();
     const risposta = await chiediModello({
       provider: p,
@@ -1312,7 +1313,7 @@ export class Engine {
     }
     const p = providerNoto(provider);
     if (!p?.diretto || p.motore !== "diretto") throw Error(`${provider} lavora sui file: sceglilo con /ordine`);
-    if (p.accesso === "chiave" && !this.chiavi.esiste(p.id)) throw Error(`Collega prima ${p.nome}: /collega ${p.id}`);
+    if (p.accesso === "chiave" && !this.chiavi.esiste(p.id)) throw nonCollegato(p, "chiave");
     // Si sceglie solo un modello che risponde davvero: una domanda minima
     // («ok») al consigliato, e se è sovraccarico o muto al successivo. Prima
     // si sceglieva a occhio e Google, sovraccarico, non rispondeva mai (25

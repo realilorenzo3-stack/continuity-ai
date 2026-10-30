@@ -41,7 +41,7 @@ import { fileFuoriProgetto, scegliDalFinder, soloFileTrascinati } from "./allega
 import { providerNoto } from "../core/provider.js";
 import { Avvisi, Domanda, Scelta, type Avviso, type Voce } from "./dialoghi.js";
 import { coloreAI, tema } from "./tema.js";
-import { eseguiComando, vociMenu, type Contesto } from "./comandi.js";
+import { eseguiComando, proponiCollegamento, vociMenu, type Contesto } from "./comandi.js";
 import { configurazione, proponiConfigurazione } from "./configura.js";
 import { controllaAggiornamento } from "../core/aggiornamenti.js";
 import { fileURLToPath } from "node:url";
@@ -220,7 +220,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
   const timerAvvisi = new Set<ReturnType<typeof setTimeout>>();
   // L'ultima fine di turno letta dal registro, chiunque l'abbia letta: un
   // comando che aggiorna durante il turno non deve «mangiarla» (punto 1).
-  let ultimaFine = { seq: 0, tipo: "" };
+  let ultimaFine = { seq: 0, tipo: "", testo: "" };
   // Lo stesso per i flussi (Fase 3): la fine del flusso e l'ultimo piano.
   let ultimaFineFlusso = { seq: 0, tipo: "", testo: "" };
   let ultimoPiano = 0;
@@ -283,7 +283,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
       setConv((c) => applicaEventi(c, eventi));
       for (const e of eventi) {
         if (FINI_TURNO.includes(e.type) && e.seq > ultimaFine.seq)
-          ultimaFine = { seq: e.seq, tipo: e.type };
+          ultimaFine = { seq: e.seq, tipo: e.type, testo: String(e.payload?.message ?? "") };
         if (e.type === "resume.started") ultimaRipresa = e.seq;
         if ((e.type === "flow.completed" || e.type === "flow.stopped") && e.seq > ultimaFineFlusso.seq)
           ultimaFineFlusso = { seq: e.seq, tipo: e.type, testo: String(e.payload?.message ?? "") };
@@ -438,6 +438,10 @@ export function App(props: Opzioni & { onEsci: () => void }) {
     await prossimoInCoda();
   };
   const dopoLaFine = async (fine: string, daSeq: number) => {
+    // Il turno si è fermato perché l'AI non è collegata: si propone di
+    // collegarla subito (/collega), invece di lasciare solo la riga.
+    if ((fine === "run.blocked" || fine === "turn.failed" || fine === "turn.blocked") && !chiusa)
+      await proponiCollegamento(contesto, ultimaFine.testo).catch(() => false);
     // Un turno ripreso dal motore lo consegna il motore stesso: consegnarlo
     // anche da qui dava messaggi contraddittori (punto 15).
     if (fine === "turn.completed" && ultimaRipresa <= daSeq) {
@@ -643,7 +647,8 @@ export function App(props: Opzioni & { onEsci: () => void }) {
         elementi: c.elementi.filter((x) => !(x.tipo === "richiesta" && (x as any).locale)),
       }));
       setInTurno(false);
-      avvisa("errore", messaggio(e));
+      // Un'AI non collegata: il riquadro per collegarla, non un errore.
+      if (!(await proponiCollegamento(contesto, messaggio(e)).catch(() => false))) avvisa("errore", messaggio(e));
       // Un messaggio della coda non si perde: torna in testa (punto 8).
       if (opzioni.dallaCoda) setCoda((c) => [t, ...c]);
       return false;

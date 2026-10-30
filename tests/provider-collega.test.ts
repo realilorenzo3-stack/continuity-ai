@@ -76,7 +76,7 @@ it("i requisiti si controllano solo per il provider che lavora", () => {
   const chiavi = portachiaviInMemoria({ openai: "sk-finta" });
   expect(requisitiProvider(p("openai"), "/x", chiavi)).toBe("sk-finta");
   expect(() => requisitiProvider(p("anthropic"), "/x", chiavi)).toThrow(
-    /continuity collega anthropic/,
+    "Claude Code · chiave API Anthropic non è collegato: collegalo con /collega anthropic",
   );
   expect(requisitiProvider(p("ollama"), "/x", chiavi)).toBeUndefined();
 });

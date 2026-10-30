@@ -108,7 +108,7 @@ it("un servizio che lavora sui file non si sceglie come «risponde soltanto», u
   const { engine, db, run } = await sessione([]);
   try {
     await expect(engine.impostaRisponde(run.id, "claude")).rejects.toThrow(/lavora sui file/);
-    await expect(engine.impostaRisponde(run.id, "google")).rejects.toThrow(/Collega prima/);
+    await expect(engine.impostaRisponde(run.id, "google")).rejects.toThrow(/^Google AI Studio · Gemini non è collegato: collegalo con \/collega google$/);
   } finally {
     await engine.shutdown();
     db.close();

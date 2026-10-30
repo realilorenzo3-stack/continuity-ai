@@ -4,7 +4,7 @@
 import type { Accessor } from "solid-js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { lavoraSuiFile, PROVIDER, providerNoto } from "../core/provider.js";
+import { lavoraSuiFile, PROVIDER, providerNoto, type ProviderNoto } from "../core/provider.js";
 import { portachiaviDiSistema } from "../core/portachiavi.js";
 import { dollari } from "../core/modelsdev.js";
 import {
@@ -31,7 +31,10 @@ import { messaggio, pubblica, testoConsegna, type Api, type Esito } from "./clie
 import type { Voce } from "./tipi.js";
 import { pannelloFlusso } from "./flusso.js";
 import { configurazione } from "./configura.js";
-import { sistema } from "../piattaforma.js";
+import { copiaNegliAppunti, sistema } from "../piattaforma.js";
+import { daCollegare, nomeDaCollegare } from "../core/collegamento.js";
+import { comeInstallare } from "../core/requisiti.js";
+import { providerLogin, providerStatus } from "../cli/providers.js";
 import { impostaLingua, lingua, traduci, type Lingua } from "./lingua.js";
 
 export type Contesto = {
@@ -523,6 +526,75 @@ async function ragionamento(c: Contesto, argomento: string) {
   await c.aggiorna();
 }
 
+// Codex o Claude Code con l'abbonamento, da /collega (richiesta di Lorenzo del
+// 30 ottobre: senza uscire da Continuity). Si avvisa, poi il loro login
+// ufficiale prende il terminale e apre il browser; alla fine si torna qui e
+// si controlla. Continuity non vede le credenziali. Se il programma non c'è,
+// il comando ufficiale per installarlo va negli appunti.
+export async function collegaAbbonamento(
+  c: Contesto,
+  p: ProviderNoto,
+  dipendenze = { providerStatus, providerLogin },
+): Promise<boolean> {
+  const en = lingua() === "en";
+  const cli = p.motore as "codex" | "claude";
+  const nome = nomeDaCollegare(p);
+  const prima = dipendenze.providerStatus(cli, c.cartellaDati);
+  if (prima.connected) {
+    c.avvisa("ok", en ? `${nome} is already connected · ${prima.detail}` : `${nome} è già collegato · ${prima.detail}`, 6000);
+    return true;
+  }
+  if (/non installata|not found/i.test(prima.detail)) {
+    const comando = comeInstallare(cli);
+    const copiato = copiaNegliAppunti(comando);
+    await c.scegli<boolean>(en ? `${nome} is not installed` : `${nome} non è installato`, [{ nome: "OK", valore: true }], {
+      nota: en
+        ? `Install it with its official command${copiato ? " (copied to the clipboard)" : ""}, in another terminal: ${comando}  — then run /connect ${p.id} again.`
+        : `Installalo con il suo comando ufficiale${copiato ? " (copiato negli appunti)" : ""}, in un altro terminale: ${comando}  — poi di nuovo /collega ${p.id}.`,
+    });
+    return false;
+  }
+  if (!c.nelTerminale) {
+    c.avvisa("info", en ? `Sign in with: continuity connect ${cli}` : `Collega con: continuity connect ${cli}`, 8000);
+    return false;
+  }
+  const v = await c.scegli<boolean>(en ? `Connect ${nome}?` : `Collegare ${nome}?`, [
+    { nome: en ? "Open the official sign-in" : "Apri il login ufficiale", valore: true },
+    { nome: en ? "Not now" : "Non ora", valore: false },
+  ], {
+    nota: en
+      ? `The official ${nome} sign-in opens in this terminal and then in your browser. When you're done you come back here, in this session. Continuity never sees your credentials.`
+      : `Il login ufficiale di ${nome} si apre in questo terminale e poi nel browser. Finito, torni qui, in questa sessione. Continuity non vede le tue credenziali.`,
+  });
+  if (!v?.valore) return false;
+  const login = dipendenze.providerLogin(cli, c.cartellaDati);
+  await c.nelTerminale(login.binary, login.args, login.env, login.cwd);
+  const dopo = dipendenze.providerStatus(cli, c.cartellaDati);
+  if (dopo.connected) {
+    c.avvisa("ok", en ? `✓ ${nome} connected · ${dopo.detail}` : `✓ ${nome} collegato · ${dopo.detail}`, 6000);
+    await c.aggiorna().catch(() => {});
+    return true;
+  }
+  c.avvisa("avviso", en ? `${nome} is not connected yet: ${dopo.detail}` : `${nome} non risulta ancora collegato: ${dopo.detail}`, 10000);
+  return false;
+}
+
+// Si scrive a un'AI non collegata (o non installata): si propone di
+// collegarla subito, invece di lasciare solo un messaggio (richiesta di
+// Lorenzo del 30 ottobre). true se il testo era di questo tipo.
+export async function proponiCollegamento(c: Contesto, testo: string): Promise<boolean> {
+  const id = daCollegare(testo);
+  if (!id) return false;
+  const en = lingua() === "en";
+  const nome = nomeDaCollegare(id);
+  const v = await c.scegli<boolean>(en ? `${nome} is not connected` : `${nome} non è collegato`, [
+    { nome: en ? "Connect it now" : "Collegalo adesso", descrizione: `/collega ${id}`, valore: true },
+    { nome: en ? "Later" : "Più tardi", descrizione: en ? "or choose another AI with /ai" : "oppure scegli un'altra AI con /ai", valore: false },
+  ], { nota: testo });
+  if (v?.valore) await eseguiComando(`/collega ${id}`, c);
+  return true;
+}
+
 // Dopo aver collegato una chiave: dove sta, e che cosa farà il sistema.
 function notaDopoCollegamento(inglese: boolean) {
   const s = sistema();
@@ -588,8 +660,7 @@ async function collegaProvider(c: Contesto, argomento: string) {
   }
   const p = providerNoto(nome);
   if (!p) return c.avvisa("errore", en() ? `I don't know “${nome}”: use /connect and choose from the list` : `Non conosco «${nome}»: scrivi /collega e scegli dall'elenco`, 8000);
-  if (p.accesso === "abbonamento")
-    return c.avvisa("info", en() ? `Connect it with the official sign-in outside this session: continuity connect ${p.motore}` : `Si collega con il login ufficiale, fuori dalla sessione: continuity connect ${p.motore}`, 8000);
+  if (p.accesso === "abbonamento") return collegaAbbonamento(c, p);
   if (p.accesso === "locale") {
     c.avvisa("info", en() ? `Looking for ${p.nome}…` : `Cerco ${p.nome}…`, 4000);
     const esito = await provaCollegamento(p, undefined);
