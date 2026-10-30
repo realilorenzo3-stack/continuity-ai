@@ -4,6 +4,10 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.14 — 2026-10-30
+
+- **Codex e Claude Code: prima si guarda se ci sono già.** L'installatore li cerca con la stessa ricerca di Continuity (PATH, `~/.local/bin`, estensioni di VS Code, app ChatGPT, Homebrew) e controlla che rispondano. Uno che funziona non si tocca e non se ne installa un secondo. Solo se mancano, o se quelli trovati non rispondono, si installa la versione ufficiale, e lo si dice.
+
 ## 2.0.0-beta.13 — 2026-10-30
 
 - **Claude Code come Codex**: si installa insieme a Continuity, con l'installatore ufficiale di Anthropic. Se manca, `/collega` e la configurazione lo installano da lì («Installalo adesso») e poi aprono il login. Lo stesso per Codex.

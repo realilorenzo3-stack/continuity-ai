@@ -418,38 +418,57 @@ case ":$PATH:" in
   ;;
 esac
 
-# Codex per i servizi gratuiti (decisione di Lorenzo del 30 ottobre): Groq,
-# NVIDIA, Google e gli altri lavorano sui file attraverso il programma Codex,
-# che non chiede l'abbonamento. Si installa con l'installatore ufficiale di
-# OpenAI, senza domande (in ~/.local/bin, senza sudo). Un errore non ferma
-# l'installazione di Continuity: la configurazione lo riproporrà.
-# CONTINUITY_SENZA_CODEX=1 lo salta (prove).
-if [ -z "${CONTINUITY_SENZA_CODEX:-}" ] && ! command -v codex >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/codex" ]; then
-  echo
-  echo 'Installo Codex (programma gratuito di OpenAI): serve ai servizi gratuiti per lavorare sui file'
-  if curl -fsSL "${CONTINUITY_CODEX_INSTALLER:-https://chatgpt.com/codex/install.sh}" | CODEX_NON_INTERACTIVE=1 sh >"$continuity_data/codex-installazione.log" 2>&1; then
-    echo '  Codex installato.'
-  else
-    echo "  Codex non installato (dettagli in $continuity_data/codex-installazione.log): la configurazione te lo riproporrà."
-  fi
-fi
-
-# Claude Code, allo stesso modo (decisione di Lorenzo del 30 ottobre: «la
-# stessa cosa di Codex»): con l'installatore ufficiale di Anthropic, in
-# ~/.local/bin, senza sudo. Per usarlo serve il proprio abbonamento Claude o
-# una chiave: il login lo fa la persona, nel programma ufficiale (/collega).
-# CONTINUITY_SENZA_CLAUDE=1 lo salta (prove).
-if [ -z "${CONTINUITY_SENZA_CLAUDE:-}" ] && ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
-  if command -v bash >/dev/null 2>&1; then
+# Codex e Claude Code (decisioni di Lorenzo del 30 ottobre): Codex serve ai
+# servizi gratuiti per lavorare sui file, Claude Code a chi ha l'abbonamento
+# Claude. Prima si guarda se ci sono già, con la stessa ricerca di Continuity
+# (PATH, ~/.local/bin, estensioni di VS Code, Homebrew) e la prova
+# «--version»: uno che funziona non si tocca e non se ne mette un secondo
+# accanto. Solo se manca, o se quelli trovati non rispondono, si installa con
+# l'installatore ufficiale (OpenAI, Anthropic), in ~/.local/bin, senza sudo e
+# senza domande. Un errore non ferma l'installazione di Continuity.
+# CONTINUITY_SENZA_CODEX=1 e CONTINUITY_SENZA_CLAUDE=1 li saltano (prove).
+continuity_trova_cli() {
+  (cd "$continuity_app" && "$continuity_toolchain/node_modules/.bin/node" --import tsx scripts/trova-cli.ts "$1" "$continuity_data") 2>/dev/null
+}
+continuity_cli() {
+  # $1 codex|claude, $2 nome, $3 installatore, $4 interprete, $5 variabile «senza», $6 nota
+  [ -n "$5" ] && return 0
+  continuity_esito=0
+  continuity_trovato=$(continuity_trova_cli "$1") || continuity_esito=$?
+  if [ "$continuity_esito" = 0 ] && [ -n "$continuity_trovato" ]; then
     echo
-    echo 'Installo Claude Code (programma ufficiale di Anthropic): per usarlo serve il tuo abbonamento Claude'
-    if curl -fsSL "${CONTINUITY_CLAUDE_INSTALLER:-https://claude.ai/install.sh}" | bash >"$continuity_data/claude-installazione.log" 2>&1; then
-      echo '  Claude Code installato: collegalo con /collega claude.'
-    else
-      echo "  Claude Code non installato (dettagli in $continuity_data/claude-installazione.log): /collega claude lo riproporrà."
+    echo "$2 è già installato ($(printf '%s' "$continuity_trovato" | cut -f2), $(printf '%s' "$continuity_trovato" | cut -f1)): lo uso così com'è."
+    return 0
+  fi
+  # La ricerca di Continuity non ha risposto (Node non utilizzabile): si
+  # guarda almeno nel PATH e in ~/.local/bin.
+  if [ "$continuity_esito" != 1 ]; then
+    continuity_trovato=
+    if command -v "$1" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$1" ]; then
+      echo
+      echo "$2 è già installato: lo uso così com'è."
+      return 0
     fi
   fi
-fi
+  echo
+  if [ -n "$continuity_trovato" ]; then
+    echo "$2 c'è ma non risponde ($(printf '%s' "$continuity_trovato" | tr '\n' ' ')): installo quello ufficiale in ~/.local/bin, che Continuity userà al suo posto."
+  fi
+  command -v "$4" >/dev/null 2>&1 || {
+    echo "Per installare $2 serve $4: installalo e ripeti, oppure collegalo dopo con /collega $1."
+    return 0
+  }
+  echo "Installo $2: $6"
+  if curl -fsSL "$3" | CODEX_NON_INTERACTIVE=1 "$4" >"$continuity_data/$1-installazione.log" 2>&1; then
+    echo "  $2 installato."
+  else
+    echo "  $2 non installato (dettagli in $continuity_data/$1-installazione.log): /collega $1 lo riproporrà."
+  fi
+}
+continuity_cli codex "Codex" "${CONTINUITY_CODEX_INSTALLER:-https://chatgpt.com/codex/install.sh}" sh "${CONTINUITY_SENZA_CODEX:-}" \
+  "programma gratuito di OpenAI, serve ai servizi gratuiti per lavorare sui file"
+continuity_cli claude "Claude Code" "${CONTINUITY_CLAUDE_INSTALLER:-https://claude.ai/install.sh}" bash "${CONTINUITY_SENZA_CLAUDE:-}" \
+  "programma ufficiale di Anthropic, per usarlo serve il tuo abbonamento Claude"
 
 # Che cosa manca al sistema, con i comandi esatti per sistemarlo.
 if [ "$(uname -s)" = Linux ]; then

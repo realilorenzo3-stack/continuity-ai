@@ -216,15 +216,16 @@ it("l'installazione installa anche Codex e Claude Code, con i loro installatori 
   const shell = existsSync("/bin/dash") ? "/bin/dash" : "sh";
   const r = spawnSync(shell, ["scripts/install.sh"], { env: ambiente, encoding: "utf8" });
   expect(r.status, r.stderr + r.stdout).toBe(0);
-  expect(r.stdout).toContain("Installo Codex (programma gratuito di OpenAI)");
+  expect(r.stdout).toContain("Installo Codex: programma gratuito di OpenAI");
   expect(readFileSync(join(casa, "codex-chiamato"), "utf8").trim()).toBe("non interattivo: 1");
-  expect(r.stdout).toContain("Installo Claude Code (programma ufficiale di Anthropic)");
+  expect(r.stdout).toContain("Installo Claude Code: programma ufficiale di Anthropic");
   expect(readFileSync(join(casa, "claude-chiamato"), "utf8")).toMatch(/^bash: \d/);
   // Già installato: la seconda volta non lo si richiama.
   rmSync(join(casa, "codex-chiamato"));
   const ancora = spawnSync(shell, ["scripts/install.sh"], { env: ambiente, encoding: "utf8" });
   expect(ancora.status).toBe(0);
   expect(ancora.stdout).not.toContain("Installo Codex");
+  expect(ancora.stdout).toContain("Codex è già installato");
   expect(ancora.stdout).not.toContain("Installo Claude Code");
   expect(existsSync(join(casa, "codex-chiamato"))).toBe(false);
 }, 60_000);
@@ -293,4 +294,33 @@ it("l'ultima versione è la più alta, non la prima che GitHub elenca (per nome 
   writeFileSync(join(app, ".continuity-version"), "2.0.0-beta.2\n");
   const github = (async () => new Response(JSON.stringify([{ tag_name: "v2.0.0-beta.9" }, { tag_name: "v2.0.0-beta.11" }]))) as any;
   expect(await controllaAggiornamento(temp("ultima-dati2-"), app, github)).toBe("2.0.0-beta.11");
+});
+
+it("prima di installare Codex o Claude Code si cerca con la ricerca di Continuity: uno che funziona si usa, uno che non risponde si segnala", () => {
+  const casa = temp("trova-casa-");
+  const bin = join(casa, "bin");
+  mkdirSync(bin);
+  const trova = () =>
+    spawnSync(process.execPath, ["--import", "tsx", "scripts/trova-cli.ts", "codex", temp("trova-dati-")], {
+      encoding: "utf8",
+      env: { ...process.env, HOME: casa, PATH: `${bin}:/usr/bin:/bin` },
+    });
+  // Sul computer ce n'è già uno (sul Mac di Lorenzo, quello dell'app
+  // ChatGPT): la ricerca lo trova anche fuori dal PATH.
+  const giaPresente = trova().status === 0;
+  // Uno che non risponde a --version: non viene mai scelto; se è l'unico,
+  // esce 1 e lo indica.
+  writeFileSync(join(bin, "codex"), "#!/bin/sh\nexit 3\n");
+  chmodSync(join(bin, "codex"), 0o755);
+  let r = trova();
+  if (giaPresente) expect(r.stdout).not.toContain(join(bin, "codex"));
+  else {
+    expect(r.status).toBe(1);
+    expect(r.stdout.trim()).toBe(join(bin, "codex"));
+  }
+  // Uno che funziona, più recente: esce 0 con percorso e versione.
+  writeFileSync(join(bin, "codex"), '#!/bin/sh\n[ "$1" = --version ] && echo "codex-cli 9.9.9"\n');
+  r = trova();
+  expect(r.status).toBe(0);
+  expect(r.stdout.trim()).toBe(`${join(bin, "codex")}\tcodex-cli 9.9.9`);
 });

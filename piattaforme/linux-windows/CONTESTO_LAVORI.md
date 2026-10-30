@@ -37,6 +37,8 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
 
 ## Lavori aperti, in ordine
 
+**Dal 30 ottobre sera la priorità è il lavoro 7, Windows nativo.**
+
 ### 0. Pacchetto già pronto (installazione in pochi secondi)
 - [x] Fatto il 30 ottobre (`scripts/pacchetto.sh`, lavoro «pacchetti» di `versione.yml`, ramo `CONTINUITY_PRONTO` di `install.sh`): sul Mac l'installazione dal pacchetto pronto richiede circa 4 secondi più il download (69 MB).
 - [ ] Verificare il primo rilascio con i pacchetti: che i quattro sistemi di GitHub (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `macos-15-intel`) li preparino, e un'installazione vera su Ubuntu (x64) dal pacchetto pronto.
@@ -85,8 +87,26 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
   È il punto debole emerso dalle prove su Ubuntu.
 - [ ] Configurazione iniziale: guidare l'installazione di Codex quando si collegano solo servizi gratuiti.
 
-### 7. Windows nativo (senza WSL)
-- [ ] Continuity come programma Windows vero, installato con `irm … | iex` da PowerShell, senza WSL: processi, percorsi, chiavi nell'archivio di Windows, copia di lavoro, comando `continuity`. Claude Code su Windows nativo non ha sandbox: lavora chiedendo il permesso (o libero). Codex usa la sua sandbox di Windows. È il lavoro più grande: da fare dal PC Windows.
+### 7. Windows nativo (senza WSL) — PRIORITÀ, decisione del 30 ottobre sera
+Con WSL Continuity su Windows non è partito nelle prove di Lorenzo (`WSL_E_DISTRO_NOT_FOUND` anche dopo le correzioni della beta.13), e WSL è un passo in più che l'obiettivo «incolla il comando e parti» non vuole. **Si passa a Windows nativo, sviluppato e provato dal PC Windows.** WSL resta com'è finché il nativo non c'è; poi `install.ps1` installa il nativo.
+
+**Obiettivo:** da PowerShell, `irm …/install.ps1 | iex` scarica il pacchetto pronto `win32-x64` (Node, programma, dipendenze), lo mette in `%LOCALAPPDATA%\Continuity`, crea il comando `continuity`, installa Codex e Claude Code con i loro installatori ufficiali per Windows se mancano, e in pochi secondi si parte con `continuity setup`.
+
+**Struttura:** una terza distribuzione, `piattaforme/windows/`, con le stesse funzioni delle altre due (`sistema.ts`, `portachiavi.ts`, `allegati.ts`). `src/sistema.ts` riconosce `"windows"` (`process.platform === "win32"`). Le regole restano quelle di `piattaforme/LEGGIMI.md`; `tests/struttura.test.ts` va esteso alla terza.
+
+**Che cosa oggi presuppone un sistema Unix** (inventario dal codice, 30 ottobre):
+- [ ] **Processi.** `spawn(..., { detached: true })` e `process.kill(-pid)` per fermare il gruppo (`src/supervisor/process.ts`, `src/core/engine.ts` righe ~451, ~3457, ~4362, `src/core/ibrida.ts`). Su Windows i gruppi non esistono: `taskkill /T /F /PID`. Riconoscimento dei processi (`ps`, `lsof`, `identificaGruppo`, `fermaProcessiNellaCartella`): `Get-CimInstance Win32_Process` o `tasklist`.
+- [ ] **Comandi di sistema.** `esiste()` usa `sh -c 'command -v'` → `where.exe`. Script `.sh` (installatore, disinstallazione, aggiornamento, `nome-chiavi.sh`) → versioni PowerShell per Windows.
+- [ ] **Percorsi.** Confronti con `radice + "/"` (`engine.ts` ~3595, `piattaforme/*/sistema.ts`) e regex con `/` → `path.sep` o `path.relative`. Cartella dati: `%APPDATA%\Continuity` (o `%LOCALAPPDATA%`).
+- [ ] **Chiavi.** `portachiaviWindows` (PasswordVault con PowerShell) esiste già, oggi usato da WSL: su Windows nativo `powershell.exe` c'è sempre.
+- [ ] **Copia di lavoro.** Clonazione: `cp -R --reflink` → `fs.cpSync` (o `robocopy`). Permessi `0o600`/`0o700`: su Windows non valgono, nessun errore.
+- [ ] **Git.** Serve Git per Windows (`winget install Git.Git`): la configurazione lo controlla e dà il comando. Fine riga: `core.autocrlf` come per WSL (`piattaforme/linux-windows/git.ts`).
+- [ ] **Claude Code su Windows nativo:** nessuna sandbox → lavora chiedendo il permesso, o libero con `/permessi` (già fatto). Serve Git Bash (lo installa Git per Windows). Installatore ufficiale: `irm https://claude.ai/install.ps1 | iex`.
+- [ ] **Codex su Windows:** installatore ufficiale `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`; usa la sua sandbox di Windows.
+- [ ] **Interfaccia:** OpenTUI ha i binari `win32-x64`: da provare in Windows Terminal (colori, mouse, tasti, incolla con ctrl+V).
+- [ ] **Appunti e browser:** `clip.exe` / `Get-Clipboard`, `start` (o `explorer.exe`).
+- [ ] **Pacchetto pronto `win32-x64`:** in `scripts/pacchetto.sh` (o un `pacchetto.ps1`) con `node-v…-win-x64.zip`, e un lavoro `windows-latest` in `versione.yml`.
+- [ ] **Prove:** molte prove usano `sh` e percorsi Unix. Aggiungere `windows-latest` a GitHub Actions un pezzo alla volta, cominciando dalle prove del codice comune.
 
 ### 6. Prove automatiche e collaudo
 - [ ] GitHub Actions: aggiungere Windows con WSL (per esempio l'azione `Vampire/setup-wsl`), almeno per installazione e comando per PowerShell.
