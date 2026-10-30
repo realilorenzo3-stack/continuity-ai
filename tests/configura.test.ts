@@ -32,18 +32,21 @@ const sonde = (presenti: string[], extra: Partial<Sonde> = {}): Sonde => ({
   esiste: (c) => presenti.includes(c),
   portachiaviLinuxAttivo: () => true,
   apparmorBlocca: () => false,
+  codexInstallato: () => true,
   ...extra,
 });
 
 it("il sistema sul Mac: Git e Portachiavi, niente sandbox da installare", () => {
   const r = controllaSistema("mac", sonde(["git", "security"]));
-  expect(r.map((x) => [x.id, x.ok])).toEqual([["git", true], ["chiavi", true]]);
+  expect(r.map((x) => [x.id, x.ok])).toEqual([["git", true], ["chiavi", true], ["codex", true]]);
   expect(controllaSistema("mac", sonde([])).find((x) => x.id === "git")?.rimedio).toBe("xcode-select --install");
 });
 
 it("il sistema su Linux: portachiavi, sandbox di Claude e il blocco di AppArmor (Ubuntu 24.04), con i comandi per sistemarli", () => {
-  const nuova = controllaSistema("linux", sonde(["git"], { apparmorBlocca: () => true }));
-  expect(nuova.map((x) => [x.id, x.ok])).toEqual([["git", true], ["chiavi", false], ["sandbox", false], ["apparmor", false]]);
+  const nuova = controllaSistema("linux", sonde(["git"], { apparmorBlocca: () => true, codexInstallato: () => false }));
+  expect(nuova.map((x) => [x.id, x.ok])).toEqual([["git", true], ["chiavi", false], ["codex", false], ["sandbox", false], ["apparmor", false]]);
+  // Il programma Codex per i servizi gratuiti, con il suo installatore ufficiale.
+  expect(nuova.find((x) => x.id === "codex")?.rimedio).toBe("curl -fsSL https://chatgpt.com/codex/install.sh | sh");
   expect(nuova.find((x) => x.id === "chiavi")?.rimedio).toBe("sudo apt install libsecret-tools gnome-keyring");
   expect(nuova.find((x) => x.id === "sandbox")?.rimedio).toBe("sudo apt install bubblewrap socat");
   // Il blocco di AppArmor: i comandi esatti, non un link.
@@ -59,6 +62,7 @@ it("il sistema in WSL: le chiavi nell'archivio di Windows (powershell.exe), e la
   expect(r.map((x) => [x.id, x.ok, x.nome])).toEqual([
     ["git", true, "Git"],
     ["chiavi", true, "Archivio credenziali di Windows"],
+    ["codex", true, "Programma Codex (per i servizi gratuiti)"],
     ["sandbox", true, "Sandbox per Claude Code"],
   ]);
 });

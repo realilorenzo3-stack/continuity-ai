@@ -4,6 +4,11 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.8 — 2026-10-30
+
+- Groq, NVIDIA, Google e gli altri servizi gratuiti lavorano sui file attraverso il programma Codex (non serve l'abbonamento ChatGPT). Se Codex non è installato, Continuity lo dice chiaramente e offre il comando ufficiale per installarlo: subito dopo aver collegato la chiave, quando scrivi un messaggio, e nella configurazione iniziale («il tuo sistema»).
+- Gli avvisi in alto a destra vanno a capo invece di tagliarsi.
+
 ## 2.0.0-beta.7 — 2026-10-30
 
 - Scrivendo a un'AI che non è collegata (manca la chiave, il login dell'abbonamento o il programma), Continuity apre un riquadro: «Collegalo adesso» porta direttamente a `/collega` per quel servizio. Il messaggio è uno solo e dice sempre il comando.

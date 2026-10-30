@@ -405,6 +405,7 @@ export function traduci(testo: string | undefined): string | undefined {
     [/^Passo (\d+) di (\d+)$/, "Step $1 of $2"],
     [/^Passo (\d+): (.+)$/, "Step $1: $2"],
     // Un'AI non collegata (src/core/collegamento.ts).
+    [/^(.+) lavora sui file attraverso il programma Codex, che su questo computer non è installato\. Non serve l'abbonamento ChatGPT: basta installarlo\.$/, "$1 works on files through the Codex program, which is not installed on this computer. No ChatGPT subscription is needed: just install it."],
     [/^(.+) non è collegato al tuo abbonamento: collegalo con \/collega (\S+)$/, "$1 is not connected to your subscription: connect it with /connect $2"],
     [/^(.+) non è collegato: collegalo con \/collega (\S+)$/, "$1 is not connected: connect it with /connect $2"],
     [/^(.+) non è installato su questo computer: \/collega (\S+) spiega come installarlo e collegarlo$/, "$1 is not installed on this computer: /connect $2 explains how to install and connect it"],

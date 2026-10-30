@@ -136,7 +136,7 @@ import {
   type Ragionamento,
 } from "../adapters/live.js";
 import { ambienteGit } from "../git/ambiente.js";
-import { nonCollegato } from "./collegamento.js";
+import { nonCollegato, serveCodex } from "./collegamento.js";
 import { randomUUID } from "node:crypto";
 import {
   execFileSync,
@@ -3984,7 +3984,12 @@ export class Engine {
         modello = buono && elenco.includes(buono) ? buono : inOrdine(profilo, elenco)[0];
         if (!modello) throw Error(`${nomeServizio(profilo)}: nessun modello gratuito disponibile in questo momento`);
       }
-      const codex = resolveProvider("codex", this.store.root);
+      let codex: { path: string; version?: string };
+      try {
+        codex = resolveProvider("codex", this.store.root);
+      } catch {
+        throw serveCodex(profilo);
+      }
       const base = voceDiBase(codex.path, codex.version ?? "sconosciuta", this.store.root);
       viaPonte = {
         indirizzo: ponte.indirizzo(profilo.id),

@@ -151,3 +151,15 @@ it("in inglese i tre messaggi si traducono", async () => {
   }
 });
 
+it("un servizio gratuito senza il programma Codex: messaggio chiaro e il comando per installarlo, senza abbonamento", async () => {
+  const { serveCodex, chiedeCodex } = await import("../src/core/collegamento.js");
+  const testo = serveCodex("groq").message;
+  expect(testo).toBe("Groq lavora sui file attraverso il programma Codex, che su questo computer non è installato. Non serve l'abbonamento ChatGPT: basta installarlo.");
+  expect(chiedeCodex(testo)).toBe(true);
+  const { c, riquadri, avvisi } = contesto([true]);
+  expect(await proponiCollegamento(c, testo)).toBe(true);
+  expect(riquadri[0].titolo).toBe("Serve il programma Codex");
+  expect(riquadri[0].nota).toMatch(/Non serve l'abbonamento ChatGPT/);
+  expect(avvisi.at(-1)).toMatch(/curl -fsSL https:\/\/chatgpt\.com\/codex\/install\.sh \| sh$/);
+});
+

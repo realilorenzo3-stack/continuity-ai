@@ -35,3 +35,17 @@ export function daCollegare(testo: string): string | undefined {
   const m = /non è (?:collegat[oa]|installat[oa])[^:]*:[^/]*\/collega ([a-z0-9-]+)/i.exec(testo);
   return m && providerNoto(m[1]) ? m[1] : undefined;
 }
+
+// I servizi gratuiti lavorano sui file attraverso il programma Codex (il
+// ponte, Fase 4): serve il programma, non l'abbonamento ChatGPT. Senza, lo si
+// dice così (prova di Lorenzo su Ubuntu, 30 ottobre: Groq e NVIDIA collegati
+// davano «codex: CLI non trovata», tagliato).
+export function serveCodex(p: ProviderNoto | string): Error {
+  return Error(
+    `${nomeDaCollegare(p)} lavora sui file attraverso il programma Codex, che su questo computer non è installato. Non serve l'abbonamento ChatGPT: basta installarlo.`,
+  );
+}
+export function chiedeCodex(testo: string): boolean {
+  return /lavora sui file attraverso il programma Codex, che su questo computer non è installato/.test(testo);
+}
+

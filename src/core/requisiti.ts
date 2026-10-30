@@ -2,10 +2,11 @@
 // iniziale (piano di pubblicazione, punto 3): che cosa c'è, che cosa manca e
 // il comando esatto per sistemarlo, per Mac, Linux e Windows con WSL.
 import { spawnSync } from "node:child_process";
-import { esiste, sistema, type Sistema } from "../piattaforma.js";
+import { cartellaDatiPredefinita, esiste, sistema, type Sistema } from "../piattaforma.js";
+import { resolveProvider } from "../adapters/resolve.js";
 
 export type Requisito = {
-  id: "git" | "chiavi" | "sandbox" | "apparmor";
+  id: "git" | "chiavi" | "sandbox" | "apparmor" | "codex";
   nome: string;
   ok: boolean;
   // Che cosa vuol dire, in una riga.
@@ -20,6 +21,8 @@ export type Sonde = {
   portachiaviLinuxAttivo: () => boolean;
   // kernel.apparmor_restrict_unprivileged_userns (Ubuntu 24.04 e successivi).
   apparmorBlocca: () => boolean;
+  // Il programma Codex c'è? (la stessa ricerca di Continuity)
+  codexInstallato: () => boolean;
 };
 
 const sondeVere: Sonde = {
@@ -36,6 +39,14 @@ const sondeVere: Sonde = {
   apparmorBlocca() {
     const r = spawnSync("sysctl", ["-n", "kernel.apparmor_restrict_unprivileged_userns"], { encoding: "utf8" });
     return r.status === 0 && r.stdout.trim() === "1";
+  },
+  codexInstallato() {
+    try {
+      resolveProvider("codex", cartellaDatiPredefinita());
+      return true;
+    } catch {
+      return false;
+    }
   },
 };
 
@@ -89,6 +100,16 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
       rimedio: apt("libsecret-tools gnome-keyring"),
     });
   }
+
+  // I servizi gratuiti lavorano sui file attraverso il programma Codex: serve
+  // il programma, non l'abbonamento (prova di Lorenzo su Ubuntu, 30 ottobre).
+  elenco.push({
+    id: "codex",
+    nome: "Programma Codex (per i servizi gratuiti)",
+    ok: sonde.codexInstallato(),
+    nota: "Groq, NVIDIA, Google e gli altri gratuiti lavorano sui file attraverso Codex; non serve l'abbonamento ChatGPT",
+    rimedio: comeInstallare("codex"),
+  });
 
   // La sandbox di Claude Code su Linux e WSL 2 (code.claude.com/docs/en/sandboxing).
   // Senza, Continuity non fa partire Claude: niente lavoro fuori dalla copia.

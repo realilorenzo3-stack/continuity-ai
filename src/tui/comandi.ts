@@ -32,7 +32,8 @@ import type { Voce } from "./tipi.js";
 import { pannelloFlusso } from "./flusso.js";
 import { configurazione } from "./configura.js";
 import { copiaNegliAppunti, sistema } from "../piattaforma.js";
-import { daCollegare, nomeDaCollegare } from "../core/collegamento.js";
+import { chiedeCodex, daCollegare, nomeDaCollegare, serveCodex } from "../core/collegamento.js";
+import { resolveProvider } from "../adapters/resolve.js";
 import { comeInstallare } from "../core/requisiti.js";
 import { providerLogin, providerStatus } from "../cli/providers.js";
 import { impostaLingua, lingua, traduci, type Lingua } from "./lingua.js";
@@ -583,6 +584,21 @@ export async function collegaAbbonamento(
 // collegarla subito, invece di lasciare solo un messaggio (richiesta di
 // Lorenzo del 30 ottobre). true se il testo era di questo tipo.
 export async function proponiCollegamento(c: Contesto, testo: string): Promise<boolean> {
+  // Un servizio gratuito senza il programma Codex: il comando per installarlo.
+  if (chiedeCodex(testo)) {
+    const en = lingua() === "en";
+    const comando = comeInstallare("codex");
+    const v = await c.scegli<boolean>(en ? "The Codex program is needed" : "Serve il programma Codex", [
+      { nome: en ? "Copy the install command" : "Copia il comando per installarlo", descrizione: comando, valore: true },
+      { nome: en ? "Later" : "Più tardi", valore: false },
+    ], {
+      nota: en
+        ? "Free services (Groq, NVIDIA, Google…) work on your files through the official Codex program. No ChatGPT subscription is needed: just install it, in another terminal, then send your message again."
+        : "I servizi gratuiti (Groq, NVIDIA, Google…) lavorano sui file attraverso il programma ufficiale Codex. Non serve l'abbonamento ChatGPT: basta installarlo, in un altro terminale, poi rimanda il messaggio.",
+    });
+    if (v?.valore) offriComando(c, comando);
+    return true;
+  }
   const id = daCollegare(testo);
   if (!id) return false;
   const en = lingua() === "en";
@@ -593,6 +609,22 @@ export async function proponiCollegamento(c: Contesto, testo: string): Promise<b
   ], { nota: testo });
   if (v?.valore) await eseguiComando(`/collega ${id}`, c);
   return true;
+}
+
+function codexPresente(cartellaDati: string) {
+  try {
+    resolveProvider("codex", cartellaDati);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Un comando negli appunti, detto in un avviso.
+function offriComando(c: Contesto, comando: string) {
+  const en = lingua() === "en";
+  const copiato = copiaNegliAppunti(comando);
+  c.avvisa("info", copiato ? (en ? `Copied to clipboard: ${comando}` : `Copiato negli appunti: ${comando}`) : comando, 30000);
 }
 
 // Dopo aver collegato una chiave: dove sta, e che cosa farà il sistema.
@@ -762,6 +794,9 @@ async function collegaProvider(c: Contesto, argomento: string) {
       },
     );
     if (ora?.valore) await pannelloAI(c, p.id);
+    // Un servizio che lavora sui file attraverso Codex, con Codex assente:
+    // lo si dice adesso, non al primo messaggio.
+    if (p.motore === "diretto" && !codexPresente(c.cartellaDati)) await proponiCollegamento(c, serveCodex(p).message);
     return;
   }
   c.avvisa("errore", en() ? `${p.nome}: not connected after 5 attempts` : `${p.nome}: non collegato dopo 5 tentativi`, 8000);

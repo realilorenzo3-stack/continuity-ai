@@ -398,7 +398,10 @@ export function Avvisi(props: { elenco: Avviso[] }) {
           backgroundColor={tema.pannello}
         >
           <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} flexDirection="column">
-            <text fg={tema.testo}>{a().testo}</text>
+            {/* A capo a parole: un avviso lungo prima si tagliava (prove di
+                Lorenzo su Ubuntu, 30 ottobre). Larghezza: il riquadro meno
+                bordi e margini. */}
+            <For each={aCapo(a().testo, Math.min(60, dim().width - 4) - 6)}>{(riga) => <text fg={tema.testo}>{riga}</text>}</For>
             <Show when={props.elenco.length > 1}>
               <text fg={tema.tenue}>{`+${props.elenco.length - 1} altri`}</text>
             </Show>

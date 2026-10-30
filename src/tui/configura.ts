@@ -228,7 +228,7 @@ export async function ollamaRaggiungibile(): Promise<boolean> {
 }
 
 function nomeInglese(r: Requisito) {
-  return { git: "Git", chiavi: r.nome.includes("Windows") ? "Windows Credential Manager" : r.nome.includes("Mac") ? "Mac Keychain" : "Linux keyring", sandbox: "Sandbox for Claude Code", apparmor: "Ubuntu allows the sandbox" }[r.id];
+  return { git: "Git", chiavi: r.nome.includes("Windows") ? "Windows Credential Manager" : r.nome.includes("Mac") ? "Mac Keychain" : "Linux keyring", sandbox: "Sandbox for Claude Code", apparmor: "Ubuntu allows the sandbox", codex: "Codex program (for free services)" }[r.id];
 }
 function notaInglese(r: Requisito) {
   return {
@@ -236,5 +236,6 @@ function notaInglese(r: Requisito) {
     chiavi: "keys for free services are stored here",
     sandbox: "without it Claude Code can't work (Continuity never lets it work outside the copy)",
     apparmor: "Ubuntu (AppArmor) blocks bubblewrap: Claude Code can't start",
+    codex: "Groq, NVIDIA, Google and the other free services work on files through Codex; no ChatGPT subscription needed",
   }[r.id];
 }
