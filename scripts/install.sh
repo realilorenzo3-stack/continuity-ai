@@ -197,7 +197,7 @@ mkdir -p "$continuity_app.new"
 for item in package.json pnpm-lock.yaml tsconfig.json tsconfig.tui.json vite.config.ts \
   vitest.config.ts playwright.config.ts index.html .node-version \
   README.md LICENSE NOTICE THIRD_PARTY_NOTICES.md PRIVACY.md SECURITY.md \
-  src tests schemas scripts; do
+  src tests schemas scripts piattaforme; do
   if [ ! -e "$continuity_source/$item" ]; then
     echo "Manca $item nei sorgenti: installazione interrotta." >&2
     exit 2
@@ -316,9 +316,9 @@ echo
 printf '%s\n' "$continuity_bin" >"$continuity_data/launcher-dir"
 echo "Installato: $continuity_bin/continuity"
 # In WSL: anche il comando «continuity» per PowerShell e il Prompt dei comandi
-# di Windows (scripts/windows.sh).
+# di Windows (piattaforme/linux-windows/windows.sh).
 if [ "$(uname -s)" = Linux ] && { [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; }; then
-  . "$continuity_source/scripts/windows.sh"
+  . "$continuity_source/piattaforme/linux-windows/windows.sh"
   if continuity_comando_win=$(continuity_installa_windows "$continuity_bin/continuity" "${WSL_DISTRO_NAME:-}" "${CONTINUITY_DATA_DIR:-}"); then
     echo "Su Windows: apri un nuovo PowerShell nella cartella del progetto e scrivi continuity ($continuity_comando_win)"
   else
@@ -332,7 +332,10 @@ continuity_rileggi=
 case ":$PATH:" in
 *":$continuity_bin:"*) ;;
 *)
-  if [ -n "${SHELL##*zsh}" ]; then
+  # SHELL può mancare (lanciato da PowerShell con «wsl -e sh», prove su
+  # Ubuntu del 30 ottobre): allora si guarda il programma predefinito.
+  continuity_shell="${SHELL:-$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)}"
+  if [ -n "${continuity_shell##*zsh}" ]; then
     continuity_rc="$HOME/.bashrc"
   else
     continuity_rc="$HOME/.zshrc"
@@ -343,6 +346,22 @@ case ":$PATH:" in
   continuity_rileggi="source $continuity_rc"
   ;;
 esac
+
+# Codex per i servizi gratuiti (decisione di Lorenzo del 30 ottobre): Groq,
+# NVIDIA, Google e gli altri lavorano sui file attraverso il programma Codex,
+# che non chiede l'abbonamento. Si installa con l'installatore ufficiale di
+# OpenAI, senza domande (in ~/.local/bin, senza sudo). Un errore non ferma
+# l'installazione di Continuity: la configurazione lo riproporrà.
+# CONTINUITY_SENZA_CODEX=1 lo salta (prove).
+if [ -z "${CONTINUITY_SENZA_CODEX:-}" ] && ! command -v codex >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/codex" ]; then
+  echo
+  echo 'Installo Codex (programma gratuito di OpenAI): serve ai servizi gratuiti per lavorare sui file'
+  if curl -fsSL "${CONTINUITY_CODEX_INSTALLER:-https://chatgpt.com/codex/install.sh}" | CODEX_NON_INTERACTIVE=1 sh >"$continuity_data/codex-installazione.log" 2>&1; then
+    echo '  Codex installato.'
+  else
+    echo "  Codex non installato (dettagli in $continuity_data/codex-installazione.log): la configurazione te lo riproporrà."
+  fi
+fi
 
 # Che cosa manca al sistema, con i comandi esatti per sistemarlo.
 if [ "$(uname -s)" = Linux ]; then
@@ -363,12 +382,12 @@ if [ "$(uname -s)" = Linux ]; then
   fi
   if [ -n "$continuity_pacchetti" ]; then
     echo
-    echo 'Mancano dei programmi del sistema (portachiavi per le chiavi, sandbox per Claude Code). Su Ubuntu e Debian:'
+    echo 'Consigliati (Continuity funziona anche senza): portachiavi per le chiavi e sandbox per Claude Code. Su Ubuntu e Debian:'
     echo "  sudo apt install $continuity_pacchetti"
   fi
   if [ "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = 1 ]; then
     echo
-    echo 'Ubuntu (AppArmor) blocca la sandbox di Claude Code. Per sbloccare solo bubblewrap:'
+    echo 'Consigliato: Ubuntu (AppArmor) blocca la sandbox di Claude Code, che intanto chiede il permesso per ogni comando. Per sbloccare solo bubblewrap:'
     cat <<'APPARMOR'
   sudo tee /etc/apparmor.d/bwrap > /dev/null <<'EOF'
 abi <abi/4.0>,

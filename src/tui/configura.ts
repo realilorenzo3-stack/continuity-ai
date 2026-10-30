@@ -233,9 +233,9 @@ function nomeInglese(r: Requisito) {
 function notaInglese(r: Requisito) {
   return {
     git: "needed for the working copy and to bring work back to your folder",
-    chiavi: "keys for free services are stored here",
-    sandbox: "without it Claude Code can't work (Continuity never lets it work outside the copy)",
-    apparmor: "Ubuntu (AppArmor) blocks bubblewrap: Claude Code can't start",
+    chiavi: "keys for free services are stored here, protected by your login (recommended; without it, a file readable only by your user)",
+    sandbox: "recommended: keeps Claude Code's commands inside the working copy; without it, Claude asks permission for each command",
+    apparmor: "recommended: Ubuntu (AppArmor) blocks bubblewrap; until then, Claude asks permission for each command",
     codex: "Groq, NVIDIA, Google and the other free services work on files through Codex; no ChatGPT subscription needed",
   }[r.id];
 }

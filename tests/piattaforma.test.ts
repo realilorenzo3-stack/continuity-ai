@@ -191,3 +191,23 @@ it("il tasto per incollare e gli appunti, per sistema", async () => {
   expect(appuntiLeggibili("linux", (n) => n === "xclip")).toBe(true);
 });
 
+
+it("senza archivio protetto: le chiavi in un file leggibile solo dall'utente (600), e lo si dice", async () => {
+  const { portachiaviFile, archivioDisponibile, notaArchivio } = await import("../src/core/portachiavi.js");
+  const { statSync, existsSync: esisteFile } = await import("node:fs");
+  const dati = join(temp("piatt-file-"), "dati");
+  const chiavi = portachiaviFile(dati);
+  expect(chiavi.esiste("groq")).toBe(false);
+  chiavi.salva("groq", "gsk_file_finta_1234567890");
+  expect(chiavi.leggi("groq")).toBe("gsk_file_finta_1234567890");
+  expect(statSync(join(dati, "chiavi.json")).mode & 0o777).toBe(0o600);
+  expect(redact("errore gsk_file_finta_1234567890")).not.toContain("gsk_file_finta");
+  expect(chiavi.togli("groq")).toBe(true);
+  expect(chiavi.leggi("groq")).toBeUndefined();
+  // Un archivio che non risponde (comando assente): si usa il file.
+  expect(archivioDisponibile(false, "/percorso/inesistente/secret-tool")).toBe(false);
+  expect(archivioDisponibile(true, "/percorso/inesistente/powershell.exe")).toBe(false);
+  // Con il file già in uso, la nota lo dice.
+  expect(esisteFile(join(dati, "chiavi.json"))).toBe(true);
+  expect(notaArchivio(dati, "linux")).toMatch(/^Su questo computer non c'è un archivio protetto delle chiavi: la chiave va in un file/);
+});

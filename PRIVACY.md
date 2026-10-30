@@ -28,7 +28,7 @@ Al revisore e agli altri controlli Continuity non manda i file di credenziali (`
 
 ## Che cosa resta sul computer
 
-- Le chiavi API, nell'archivio protetto del sistema: Portachiavi sul Mac, portachiavi di Linux (libsecret), archivio credenziali di Windows con WSL.
+- Le chiavi API, nell'archivio protetto del sistema: Portachiavi sul Mac, portachiavi di Linux (libsecret), archivio credenziali di Windows con WSL. Dove l'archivio non c'è o non risponde (per esempio Linux senza desktop), in un file `chiavi.json` nella cartella dati, leggibile solo dal tuo utente: Continuity lo dice prima di salvare la chiave.
 - Sessioni, memoria e impostazioni, nella cartella dati di Continuity (`~/Library/Application Support/Continuity…` sul Mac, `~/.local/share/Continuity…` su Linux e WSL). `sh scripts/uninstall.sh --all` le cancella, dopo conferma, insieme alle chiavi di quella cartella nel Portachiavi.
 
 Continuity non legge le credenziali di Codex e Claude Code: usa i loro programmi ufficiali, collegati da te.

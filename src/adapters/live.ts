@@ -448,6 +448,10 @@ export function liveCommand(
     // Un passo di un flusso che legge soltanto (pianifica, rivede, verifica:
     // Fase 3): l'AI legge ed esegue i comandi, ma non scrive nella copia.
     soloLettura?: boolean;
+    // Claude (decisione del 30 ottobre): «libero» = Bypass permissions; senza
+    // la sandbox del sistema i comandi passano dal permesso della persona.
+    modoClaude?: "chiedi" | "libero";
+    sandbox?: boolean;
   } = {},
 ) {
   const diClaude = (elenco: Connettore[]) =>
@@ -471,6 +475,8 @@ export function liveCommand(
   // Continuity le dà), mai nella cartella della persona o altrove.
   const cache = lavoro.cache;
   const leggeSoltanto = Boolean(lavoro.soloLettura);
+  const libero = lavoro.modoClaude === "libero" && !leggeSoltanto;
+  const conSandbox = lavoro.sandbox !== false;
   const sforzo = lavoro.sforzo
     ? lavoro.sforzo
     : lavoro.ragionamento
@@ -659,6 +665,7 @@ export function liveCommand(
             root ? resolveProvider("claude", root).version : undefined,
           ),
           leggeSoltanto ? work : undefined,
+          conSandbox,
         ),
       ),
       // Comandi, rete e skill si usano senza chiedere: nella sandbox il
@@ -667,7 +674,9 @@ export function liveCommand(
       "--allowedTools",
       [
         ...(leggeSoltanto ? ["Read", "Glob", "Grep"] : []),
-        "Bash",
+        // Senza sandbox i comandi non sono consentiti in anticipo: li decide
+        // la persona (programma dei permessi), salvo la modalità libera.
+        ...(conSandbox || libero ? ["Bash"] : []),
         "WebFetch",
         "WebSearch",
         "Skill",
@@ -678,7 +687,7 @@ export function liveCommand(
       ].join(","),
       // In sola lettura non si chiede nulla alla persona: ciò che non è già
       // consentito resta vietato («dontAsk»).
-      ...(lavoro.permessi && !leggeSoltanto
+      ...(lavoro.permessi && !leggeSoltanto && !libero
         ? [
             "--mcp-config",
             JSON.stringify({
@@ -689,6 +698,8 @@ export function liveCommand(
                   env: {
                     CONTINUITY_PERMESSI_RUN: lavoro.permessi.run,
                     CONTINUITY_PERMESSI_SERVIZIO: lavoro.permessi.servizio,
+                    // Senza sandbox anche i comandi si chiedono alla persona.
+                    ...(conSandbox ? {} : { CONTINUITY_PERMESSI_COMANDI: "1" }),
                   },
                 },
               },
@@ -706,9 +717,10 @@ export function liveCommand(
         ...GIT_CHE_SCRIVE,
         ...diClaude(connettori.spenti),
       ].join(","),
-      // Le modifiche ai file valgono solo dentro la copia di lavoro.
+      // Le modifiche ai file valgono solo dentro la copia di lavoro. Nella
+      // modalità libera Claude non chiede nulla (Bypass permissions).
       "--permission-mode",
-      leggeSoltanto ? "dontAsk" : "acceptEdits",
+      leggeSoltanto ? "dontAsk" : libero ? "bypassPermissions" : "acceptEdits",
     ],
   };
 }
@@ -818,7 +830,10 @@ export function retePerClaude(versione?: string): string[] {
 export const SCRIVONO_CLAUDE = ["Edit", "Write", "NotebookEdit"];
 // «soloLettura»: la copia di lavoro, dove nemmeno i comandi possono scrivere
 // (passi dei flussi che leggono soltanto, Fase 3).
-export function impostazioniClaude(cache?: string, domini = DOMINI_SVILUPPO, soloLettura?: string) {
+export function impostazioniClaude(cache?: string, domini = DOMINI_SVILUPPO, soloLettura?: string, conSandbox = true) {
+  // Senza la sandbox del sistema (Linux senza bubblewrap, 30 ottobre) Claude
+  // lavora lo stesso: i comandi li consente la persona, uno per uno.
+  if (!conSandbox) return { disableAllHooks: true, sandbox: { enabled: false } };
   return {
     disableAllHooks: true,
     sandbox: {

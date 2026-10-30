@@ -5,7 +5,7 @@ import type { Accessor } from "solid-js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lavoraSuiFile, PROVIDER, providerNoto, type ProviderNoto } from "../core/provider.js";
-import { portachiaviDiSistema } from "../core/portachiavi.js";
+import { archivioScelto, portachiaviDiSistema } from "../core/portachiavi.js";
 import { dollari } from "../core/modelsdev.js";
 import {
   comandoSenzaBarra,
@@ -31,7 +31,8 @@ import { messaggio, pubblica, testoConsegna, type Api, type Esito } from "./clie
 import type { Voce } from "./tipi.js";
 import { pannelloFlusso } from "./flusso.js";
 import { configurazione } from "./configura.js";
-import { copiaNegliAppunti, sistema } from "../piattaforma.js";
+import { copiaNegliAppunti, sandboxClaude, sistema } from "../piattaforma.js";
+import { leggiModoClaude, salvaModoClaude, type ModoClaude } from "../core/permessi-claude.js";
 import { chiedeCodex, daCollegare, nomeDaCollegare, serveCodex } from "../core/collegamento.js";
 import { resolveProvider } from "../adapters/resolve.js";
 import { comeInstallare } from "../core/requisiti.js";
@@ -81,6 +82,7 @@ export const COMANDI_TUI: {
   { nome: "/modello", breve: "modello e ragionamento dell'AI", titolo: "Modello e ragionamento", gruppo: "Le AI" },
   { nome: "/ibrida", breve: "il modello sul tuo computer", titolo: "Il modello sul tuo computer", gruppo: "Le AI" },
   { nome: "/revisore", breve: "l'AI che rivede il lavoro e suggerisce", titolo: "Il revisore", gruppo: "Le AI" },
+  { nome: "/permessi", breve: "Claude chiede il permesso o lavora libero", titolo: "Permessi di Claude", gruppo: "Le AI" },
   { nome: "/flusso", breve: "come lavorano le AI: da sola, con un controllo, con un piano", titolo: "Come lavorano le AI", gruppo: "Le AI" },
   { nome: "/connettori", breve: "accendi e spegni i connettori", titolo: "Connettori", gruppo: "Le AI" },
   { nome: "/allega", breve: "aggiungi un file al messaggio", titolo: "Allega un file", gruppo: "Il lavoro" },
@@ -105,6 +107,7 @@ export function vociMenu(): Voce<string>[] {
     "/modello": ["Model and reasoning", "model and reasoning level", "AI", "/model"],
     "/ibrida": ["AI on your computer", "the local model on your computer", "AI", "/hybrid"],
     "/revisore": ["Reviewer", "the AI that reviews work and suggests changes", "AI", "/reviewer"],
+    "/permessi": ["Claude permissions", "Claude asks permission or works freely", "AI", "/permissions"],
     "/flusso": ["How AIs work", "solo work, review, or plan", "AI", "/workflow"],
     "/connettori": ["Connectors", "turn connectors on or off", "AI", "/connectors"],
     "/allega": ["Attach a file", "attach a file to the message", "Work", "/attach"],
@@ -196,6 +199,9 @@ export async function eseguiComando(testo: string, c: Contesto): Promise<boolean
         return true;
       case "/ai":
         await pannelloAI(c, argomento);
+        return true;
+      case "/permessi":
+        await pannelloPermessi(c);
         return true;
       case "/revisore":
         await pannelloRevisore(c);
@@ -627,14 +633,61 @@ function offriComando(c: Contesto, comando: string) {
   c.avvisa("info", copiato ? (en ? `Copied to clipboard: ${comando}` : `Copiato negli appunti: ${comando}`) : comando, 30000);
 }
 
+// Come lavora Claude Code (decisione di Lorenzo del 30 ottobre): chiede il
+// permesso, oppure lavora libero (Bypass permissions). Vale da qui in poi,
+// per tutte le sessioni.
+export async function pannelloPermessi(c: Contesto) {
+  const en = lingua() === "en";
+  const attuale = leggiModoClaude(c.cartellaDati);
+  const sandbox = sandboxClaude();
+  const v = await c.scegli<ModoClaude>(en ? "Claude permissions" : "Permessi di Claude", [
+    {
+      nome: en ? "Ask permission" : "Chiede il permesso",
+      descrizione: sandbox
+        ? en
+          ? "commands run inside the working copy without questions; anything else asks you first"
+          : "i comandi girano chiusi nella copia di lavoro senza domande; per il resto ti chiede"
+        : en
+          ? "no sandbox on this computer: you allow each command"
+          : "su questo computer non c'è la sandbox: ogni comando lo consenti tu",
+      valore: "chiedi",
+      attuale: attuale === "chiedi",
+    },
+    {
+      nome: en ? "Work freely (Bypass permissions)" : "Lavora libero (Bypass permissions)",
+      descrizione: en ? "Claude never asks: it does what it thinks is needed" : "Claude non chiede mai: fa quello che ritiene necessario",
+      valore: "libero",
+      attuale: attuale === "libero",
+    },
+  ], {
+    nota: en
+      ? `In free mode Claude can run any command without asking${sandbox ? " (the sandbox still keeps its commands inside the working copy)" : ", and on this computer there is no sandbox: it can also touch files outside the project"}. Your folder only changes when work is delivered, and /undo brings it back.`
+      : `Nella modalità libera Claude può eseguire qualsiasi comando senza chiedere${sandbox ? " (la sandbox tiene comunque i comandi dentro la copia di lavoro)" : ", e su questo computer non c'è la sandbox: può toccare anche file fuori dal progetto"}. La tua cartella cambia solo alla consegna, e /annulla la rimette com'era.`,
+  });
+  if (!v || v.valore === attuale) return;
+  salvaModoClaude(c.cartellaDati, v.valore);
+  c.avvisa(
+    v.valore === "libero" ? "avviso" : "ok",
+    v.valore === "libero"
+      ? en ? "Claude works freely from the next turn (Bypass permissions)" : "Claude lavora libero dal prossimo turno (Bypass permissions)"
+      : en ? "Claude asks permission again from the next turn" : "Claude torna a chiedere il permesso dal prossimo turno",
+    8000,
+  );
+}
+
 // Dopo aver collegato una chiave: dove sta, e che cosa farà il sistema.
-function notaDopoCollegamento(inglese: boolean) {
+function notaDopoCollegamento(inglese: boolean, cartellaDati: string) {
   const s = sistema();
+  const archivio = archivioScelto(cartellaDati, s);
   const comune = inglese
     ? "It works on the project like the other AIs until you choose another with /ai."
     : "Lavora sul progetto come le altre AI, finché non ne scegli un'altra con /ai.";
   const dove =
-    s === "mac"
+    archivio === "file"
+      ? inglese
+        ? "There is no protected key store on this computer: the key is in a file in Continuity's data folder, readable only by your user."
+        : "Su questo computer non c'è un archivio protetto delle chiavi: la chiave è in un file nella cartella dati di Continuity, leggibile solo dal tuo utente."
+      : s === "mac"
       ? inglese
         ? "On first use after each launch, macOS asks to read the key: choose Allow."
         : "Al primo uso dopo ogni avvio il Mac chiede il permesso di leggere la chiave: scegli «Consenti»."
@@ -711,6 +764,15 @@ async function collegaProvider(c: Contesto, argomento: string) {
     en() ? "3. paste it below and press enter" : "3. incollala qui sotto e premi invio",
     ...(p.nota ? ["", traduci(p.nota) ?? p.nota] : []),
     ...(p.dati ? ["", `${en() ? "Data" : "Dati"}: ${traduci(p.dati) ?? p.dati}`] : []),
+    // Senza archivio protetto la chiave va in un file: lo si dice prima.
+    ...(archivioScelto(c.cartellaDati) === "file"
+      ? [
+          "",
+          en()
+            ? "Note: this computer has no protected key store, so the key will be saved in a file readable only by your user."
+            : "Nota: su questo computer non c'è un archivio protetto delle chiavi, quindi la chiave andrà in un file leggibile solo dal tuo utente.",
+        ]
+      : []),
   ].join("\n");
   let prima = "";
   if (p.primaParte) {
@@ -790,7 +852,7 @@ async function collegaProvider(c: Contesto, argomento: string) {
         { nome: en() ? "Later (/ai)" : "Più tardi (/ai)", valore: false },
       ],
       {
-        nota: notaDopoCollegamento(en()),
+        nota: notaDopoCollegamento(en(), c.cartellaDati),
       },
     );
     if (ora?.valore) await pannelloAI(c, p.id);

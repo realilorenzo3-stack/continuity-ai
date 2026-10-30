@@ -189,3 +189,35 @@ it("la copia pubblica: solo programma, prove, script e documenti per gli utenti;
   expect(sbagliata.status).toBe(1);
   expect(sbagliata.stderr).toContain("Uso: pnpm rilascio <versione>");
 });
+
+it("l'installazione installa anche Codex, con il suo installatore ufficiale e senza domande, solo se manca", () => {
+  const dati = datiConToolchain();
+  const casa = temp("versioni-casa-");
+  const lanciatori = join(casa, "bin");
+  // Un «installatore di Codex» finto: annota come è stato chiamato.
+  const finto = join(temp("codex-finto-"), "install.sh");
+  writeFileSync(finto, `#!/bin/sh\nmkdir -p "$HOME/.local/bin"\nprintf '#!/bin/sh\\necho codex\\n' > "$HOME/.local/bin/codex"\nchmod +x "$HOME/.local/bin/codex"\necho "non interattivo: $CODEX_NON_INTERACTIVE" > "$HOME/codex-chiamato"\n`);
+  const ambiente = {
+    // Niente Codex nel PATH né in ~/.local/bin.
+    PATH: "/usr/bin:/bin",
+    HOME: casa,
+    CONTINUITY_DATA_DIR: dati,
+    CONTINUITY_BIN_DIR: lanciatori,
+    CONTINUITY_SENZA_CODEX: "",
+    CONTINUITY_CODEX_INSTALLER: `file://${finto}`,
+  };
+  // dash, la shell di Ubuntu, dove c'è anche sul Mac: più severa di bash (una
+  // variabile mancante con «set -u» ferma lo script; SHELL qui non c'è).
+  const shell = existsSync("/bin/dash") ? "/bin/dash" : "sh";
+  const r = spawnSync(shell, ["scripts/install.sh"], { env: ambiente, encoding: "utf8" });
+  expect(r.status, r.stderr + r.stdout).toBe(0);
+  expect(r.stdout).toContain("Installo Codex (programma gratuito di OpenAI)");
+  expect(readFileSync(join(casa, "codex-chiamato"), "utf8").trim()).toBe("non interattivo: 1");
+  // Già installato: la seconda volta non lo si richiama.
+  rmSync(join(casa, "codex-chiamato"));
+  const ancora = spawnSync(shell, ["scripts/install.sh"], { env: ambiente, encoding: "utf8" });
+  expect(ancora.status).toBe(0);
+  expect(ancora.stdout).not.toContain("Installo Codex");
+  expect(existsSync(join(casa, "codex-chiamato"))).toBe(false);
+}, 60_000);
+

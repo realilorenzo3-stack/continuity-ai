@@ -57,7 +57,9 @@ async function decidi(args) {
   const input = args?.input ?? {};
   // Fuori dai connettori nulla passa da qui: ciò che non è già consentito
   // resta vietato, come prima di questo programma.
-  if (!strumento.startsWith("mcp__"))
+  // Senza la sandbox del sistema (Linux, 30 ottobre) anche i comandi e gli
+  // altri strumenti di Claude si chiedono alla persona.
+  if (!strumento.startsWith("mcp__") && process.env.CONTINUITY_PERMESSI_COMANDI !== "1")
     return { behavior: "deny", message: `${strumento} non è consentito nelle sessioni di Continuity` };
   if (soloLettura(strumento)) return { behavior: "allow", updatedInput: input };
   try {

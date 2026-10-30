@@ -161,7 +161,7 @@ export function providerCandidates(name: Provider, root: string) {
     ...saved(root, name),
     ...fromPath(name),
     ...(name === "codex"
-      ? editorCodex()
+      ? [join(homedir(), ".local", "bin", "codex"), ...editorCodex()]
       : [
           "/usr/local/bin/claude",
           "/opt/homebrew/bin/claude",

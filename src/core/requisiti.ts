@@ -94,9 +94,7 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
       id: "chiavi",
       nome: "Portachiavi di Linux",
       ok: c && sonde.portachiaviLinuxAttivo(),
-      nota: c
-        ? "qui vanno le chiavi dei servizi gratuiti; serve un portachiavi attivo (di solito quello del desktop)"
-        : "qui vanno le chiavi dei servizi gratuiti",
+      nota: "consigliato: qui vanno le chiavi dei servizi gratuiti, protette dal tuo login; senza, vanno in un file leggibile solo dal tuo utente",
       rimedio: apt("libsecret-tools gnome-keyring"),
     });
   }
@@ -118,7 +116,7 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
       id: "sandbox",
       nome: "Sandbox per Claude Code",
       ok: sonde.esiste("bwrap") && sonde.esiste("socat"),
-      nota: "senza, Claude Code non può lavorare (Continuity non lo fa lavorare fuori dalla copia)",
+      nota: "consigliato: tiene i comandi di Claude Code dentro la copia di lavoro; senza, Claude chiede il permesso per ogni comando",
       rimedio: apt("bubblewrap socat"),
     });
     if (sonde.apparmorBlocca())
@@ -126,7 +124,7 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
         id: "apparmor",
         nome: "Ubuntu lascia lavorare la sandbox",
         ok: false,
-        nota: "Ubuntu (AppArmor) blocca bubblewrap: Claude Code non può partire",
+        nota: "consigliato: Ubuntu (AppArmor) blocca bubblewrap; finché è bloccato, Claude chiede il permesso per ogni comando",
         // Il profilo che lascia lavorare solo bwrap (code.claude.com/docs/en/sandboxing).
         rimedio: PROFILO_APPARMOR,
       });

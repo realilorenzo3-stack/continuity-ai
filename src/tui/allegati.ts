@@ -4,11 +4,12 @@
 //   riconosce e diventa un allegato invece di testo;
 // - il «+» accanto al campo e «/allega» senza nulla aprono la finestra del
 //   Finder per sceglierli (osascript, «choose file»).
-import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, sep } from "node:path";
-import { esiste } from "../piattaforma.js";
+import { sistema } from "../piattaforma.js";
+import { scegliFile as scegliFileMac } from "../../piattaforme/macos/allegati.js";
+import { scegliFile as scegliFileLinux } from "../../piattaforme/linux-windows/allegati.js";
 
 // Le parole di un testo come le scrive il Terminale trascinando file: apici
 // singoli o doppi, oppure spazi e caratteri speciali preceduti da «\».
@@ -76,37 +77,8 @@ export function fileFuoriProgetto(testo: string, progetto: string): string[] {
     .filter((p) => p.startsWith("/") && !resolve(p).startsWith(radice) && èFile(p));
 }
 
-// La finestra del Finder per scegliere uno o più file. Annullare non è un
-// errore: si torna senza nulla.
+// La finestra del sistema per scegliere uno o più file (Finder sul Mac,
+// zenity su Linux): in piattaforme/<sistema>/allegati.ts.
 export function scegliDalFinder(): Promise<string[]> {
-  const script = [
-    'set scelti to choose file with prompt "Allega a Continuity" with multiple selections allowed',
-    'set fuori to ""',
-    "repeat with f in scelti",
-    "set fuori to fuori & POSIX path of f & linefeed",
-    "end repeat",
-    "return fuori",
-  ];
-  return new Promise((risolvi) => {
-    // Su Linux la finestra di scelta di GNOME (zenity), se c'è; altrimenti il
-    // percorso si scrive o si trascina nel terminale.
-    if (process.platform !== "darwin") {
-      if (!esiste("zenity")) return risolvi([]);
-      return execFile(
-        "zenity",
-        ["--file-selection", "--multiple", "--separator=\n", "--title=Allega a Continuity"],
-        { timeout: 10 * 60 * 1000 },
-        (errore, uscita) => risolvi(errore ? [] : String(uscita).split("\n").map((r) => r.trim()).filter(Boolean)),
-      );
-    }
-    execFile(
-      "/usr/bin/osascript",
-      script.flatMap((riga) => ["-e", riga]),
-      { timeout: 10 * 60 * 1000 },
-      (errore, uscita) => {
-        if (errore) return risolvi([]);
-        risolvi(String(uscita).split("\n").map((r) => r.trim()).filter(Boolean));
-      },
-    );
-  });
+  return sistema() === "mac" ? scegliFileMac() : scegliFileLinux();
 }

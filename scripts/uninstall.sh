@@ -55,9 +55,9 @@ if [ -L "$continuity_bin/Continuity" ] &&
   [ "$(readlink "$continuity_bin/Continuity")" = continuity ]; then
   rm -f "$continuity_bin/Continuity"
 fi
-# In WSL anche il comando di Windows (scripts/windows.sh).
+# In WSL anche il comando di Windows (piattaforme/linux-windows/windows.sh).
 if [ "$(uname -s)" = Linux ] && { [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; }; then
-  . "$(cd "$(dirname "$0")" && pwd)/windows.sh"
+  . "$(cd "$(dirname "$0")/.." && pwd)/piattaforme/linux-windows/windows.sh"
   continuity_togli_windows || true
 fi
 rm -rf "$continuity_data/app" "$continuity_data/app.precedente"

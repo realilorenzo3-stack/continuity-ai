@@ -103,7 +103,7 @@ const ALIAS_INGLESE: Record<string, string> = {
   connectors: "connettori", attach: "allega", order: "ordine", connect: "collega",
   reviewer: "revisore", workflow: "flusso", workflows: "flusso", hybrid: "ibrida",
   free: "gratuiti", files: "file", undo: "annulla", apply: "applica", publish: "pubblica",
-  status: "stato", setup: "configura", help: "aiuto", exit: "esci", quit: "esci", close: "chiudi", theme: "tema",
+  status: "stato", setup: "configura", permissions: "permessi", help: "aiuto", exit: "esci", quit: "esci", close: "chiudi", theme: "tema",
 };
 
 // Solo i comandi: «/model gpt», oppure un alias inglese scritto da solo

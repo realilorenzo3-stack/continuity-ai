@@ -113,11 +113,12 @@ Node 26.4 o più recente (toolchain della 2.0: Node 26.10.0), pnpm 10.17.1. Per 
 - `src/adapters`: lancio e lettura dei CLI dei provider. `src/supervisor`: processi.
 - `src/persistence`: SQLite e redazione. `src/git`: fotografie e ripristino. `src/handoff`: pacchetto di passaggio (RHP).
 - `src/cli`: terminale. `src/server`: servizio locale. `src/ui`: pannello web.
-- `docs/CONTEXT.md`: diario del progetto, da aggiornare a ogni modifica.
+- `piattaforme/macos` e `piattaforme/linux-windows`: ciò che cambia fra i sistemi (chiavi, cartelle, appunti, browser, processi, WSL). Tutto il resto è comune: una modifica vale per Mac, Linux e Windows. Regole in [piattaforme/LEGGIMI.md](piattaforme/LEGGIMI.md).
 
 ## Limiti noti
 
-- Non provato: esaurimento dentro un sotto-agente, pilot statistico, Linux, macchina vergine, progetti molto grandi, dipendenze su un disco diverso (senza clonazione APFS), interruzione a metà dell'apertura di una sessione.
+- Linux e Windows (WSL 2) sono in anteprima: lavori aperti in [piattaforme/linux-windows/CONTESTO_LAVORI.md](piattaforme/linux-windows/CONTESTO_LAVORI.md).
+- Non provato: esaurimento dentro un sotto-agente, pilot statistico, macchina vergine, progetti molto grandi, dipendenze su un disco diverso (senza clonazione APFS), interruzione a metà dell'apertura di una sessione.
 - Dentro la sandbox le AI non possono avviare un browser (Chromium e WebKit si chiudono): le verifiche nel browser le esegue Continuity, che passa all'AI le ultime righe degli esiti falliti.
 - Le skill del progetto (`.claude/skills`) non vengono caricate per Claude, per sicurezza; agenti e istruzioni del progetto sì.
 - Il confine è la sandbox di ciascun CLI (Codex `workspace-write` con rete; Claude con la sua sandbox del terminale, la cache dei pacchetti e la rete aperta dalla versione 2.1.186 di Claude Code, un elenco di siti di sviluppo prima). I comandi Git che cambiano la storia sono vietati e, se avvengono, Continuity riporta la copia al punto di partenza del turno.

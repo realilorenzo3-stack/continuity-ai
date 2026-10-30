@@ -58,7 +58,7 @@ jobs:
       - name: Installazione e disinstallazione
         run: |
           prova="$RUNNER_TEMP/installazione"
-          export CONTINUITY_DATA_DIR="$prova/dati" CONTINUITY_BIN_DIR="$prova/bin"
+          export CONTINUITY_DATA_DIR="$prova/dati" CONTINUITY_BIN_DIR="$prova/bin" CONTINUITY_SENZA_CODEX=1
           sh scripts/install.sh
           test "$("$CONTINUITY_BIN_DIR/continuity" version)" = "$(node -p 'require("./package.json").version')"
           printf 'ELIMINA\n' | sh scripts/uninstall.sh --all

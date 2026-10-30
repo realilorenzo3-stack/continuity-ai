@@ -25,7 +25,7 @@ export default defineConfig({
     // Anche Ollama: lo spegnimento del motore lo interroga per liberare il
     // modello, e nei test non deve mai raggiungere quello vero della persona
     // (porta 9, sempre chiusa). I test di Ollama usano un server finto.
-    env: { CONTINUITY_IBRIDA: "spenta", CONTINUITY_OLLAMA_URL: "http://127.0.0.1:9", CONTINUITY_LINGUA: process.env.CONTINUITY_LINGUA ?? "it" },
+    env: { CONTINUITY_IBRIDA: "spenta", CONTINUITY_OLLAMA_URL: "http://127.0.0.1:9", CONTINUITY_LINGUA: process.env.CONTINUITY_LINGUA ?? "it", CONTINUITY_SENZA_CODEX: "1" },
     fileParallelism: false,
     // CLI finte per la versione, solo dove Codex e Claude Code non ci sono.
     setupFiles: ["tests/cli-finte.ts"],

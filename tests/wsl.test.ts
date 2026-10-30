@@ -117,7 +117,7 @@ require("fs").appendFileSync(${JSON.stringify(registro)}, Buffer.from(a[a.indexO
 `,
   );
   const esegui = (funzione: string, ...argomenti: string[]) =>
-    spawnSync("sh", ["-c", `. "${process.cwd()}/scripts/windows.sh"; ${funzione} "$@"`, "_", ...argomenti], {
+    spawnSync("sh", ["-c", `. "${process.cwd()}/piattaforme/linux-windows/windows.sh"; ${funzione} "$@"`, "_", ...argomenti], {
       encoding: "utf8",
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
     });
@@ -157,7 +157,7 @@ it("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity
 });
 
 it("senza Windows raggiungibile (cmd.exe non risponde) il comando non si crea e l'installatore lo dice", () => {
-  const r = spawnSync("sh", ["-c", `. "${process.cwd()}/scripts/windows.sh"; continuity_installa_windows /x Ubuntu`], {
+  const r = spawnSync("sh", ["-c", `. "${process.cwd()}/piattaforme/linux-windows/windows.sh"; continuity_installa_windows /x Ubuntu`], {
     encoding: "utf8",
     env: { ...process.env, PATH: "/usr/bin:/bin" },
   });

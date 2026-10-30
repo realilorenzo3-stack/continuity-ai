@@ -78,7 +78,7 @@ import {
   type Catalogo,
 } from "./modelsdev.js";
 import { percorsoSensibile } from "./sensibili.js";
-import { copiaVeloce } from "../piattaforma.js";
+import { copiaVeloce, sandboxClaude } from "../piattaforma.js";
 import {
   CARTELLA_CONTINUITY,
   leggiAgenti,
@@ -137,6 +137,7 @@ import {
 } from "../adapters/live.js";
 import { ambienteGit } from "../git/ambiente.js";
 import { nonCollegato, serveCodex } from "./collegamento.js";
+import { leggiModoClaude } from "./permessi-claude.js";
 import { randomUUID } from "node:crypto";
 import {
   execFileSync,
@@ -4026,6 +4027,9 @@ export class Engine {
                   ponte: viaPonte,
                   // Il passo di un flusso che legge soltanto (Fase 3).
                   soloLettura: Boolean(r.passoSoloLettura),
+                  // Claude: Bypass permissions e sandbox del sistema (30 ottobre).
+                  modoClaude: leggiModoClaude(this.store.root),
+                  sandbox: sandboxClaude(),
                   permessi: r.session && r.project
                     ? {
                         run: r.id,
@@ -5277,11 +5281,14 @@ export class Engine {
     if (!this.children.has(runId))
       return Promise.resolve(false);
     const id = randomUUID();
-    const nome = strumento.replace(/^mcp__(claude_ai_)?/, "").replace("__", ": ");
-    let dettaglio = "";
-    try {
-      dettaglio = JSON.stringify(input ?? {}).slice(0, 400);
-    } catch {}
+    // Un comando del terminale (Claude senza sandbox): si mostra il comando.
+    const comando = strumento === "Bash" && typeof (input as any)?.command === "string" ? String((input as any).command) : "";
+    const nome = comando ? "un comando" : strumento.replace(/^mcp__(claude_ai_)?/, "").replace("__", ": ");
+    let dettaglio = comando.slice(0, 400);
+    if (!comando)
+      try {
+        dettaglio = JSON.stringify(input ?? {}).slice(0, 400);
+      } catch {}
     this.event(r, "permission.requested", `${r.agent} chiede il permesso per ${nome}`, r.agent);
     return new Promise<boolean>((ok) => {
       // Sotto il tempo massimo degli strumenti di Claude (3 minuti): oltre,

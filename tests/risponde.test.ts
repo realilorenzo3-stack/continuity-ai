@@ -119,7 +119,7 @@ it("i comandi sono in quattro gruppi, nell'ordine deciso con Lorenzo", () => {
   const gruppi = [...new Set(COMANDI_TUI.map((c) => c.gruppo))];
   expect(gruppi).toEqual(["Le AI", "Il lavoro", "La sessione", "Altro"]);
   expect(COMANDI_TUI.map((c) => c.nome)).toEqual([
-    "/ai", "/collega", "/modello", "/ibrida", "/revisore", "/flusso", "/connettori",
+    "/ai", "/collega", "/modello", "/ibrida", "/revisore", "/permessi", "/flusso", "/connettori",
     "/allega", "/file", "/applica", "/annulla", "/pubblica",
     "/stato", "/chiudi", "/esci",
     "/tema", "/linguaggio", "/configura", "/aiuto",

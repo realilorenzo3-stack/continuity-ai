@@ -112,7 +112,7 @@ export async function collega(
     if (/[\s:]/.test(prima))
       return { stato: "fallito", provider, dettaglio: `${provider.primaParte} non valido` };
   }
-  dialogo.scrivi(`  ${notaArchivio()}\n`);
+  dialogo.scrivi(`  ${notaArchivio(root)}\n`);
   let chiave = (
     await dialogo.chiediNascosto("  Incolla la chiave (non compare a schermo): ")
   )?.trim();

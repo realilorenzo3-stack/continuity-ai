@@ -19,6 +19,7 @@ docs/CONFORMITA.md
 docs/COPYRIGHT.md
 index.html
 package.json
+piattaforme
 playwright.config.ts
 pnpm-lock.yaml
 schemas

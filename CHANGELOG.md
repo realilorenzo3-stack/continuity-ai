@@ -4,6 +4,15 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.10 — 2026-10-30
+
+- **Claude Code anche senza sandbox**: dove la sandbox del sistema non c'è (Linux senza bubblewrap, Ubuntu che la blocca), Claude lavora lo stesso e chiede il permesso per ogni comando, invece di non partire.
+- **`/permessi`** (in inglese `/permissions`): «Chiede il permesso» oppure «Lavora libero (Bypass permissions)», con cui Claude non chiede mai nulla. Vale per tutte le sessioni.
+- **Chiavi**: dove l'archivio protetto del sistema non c'è (per esempio Linux senza desktop), la chiave va in un file leggibile solo dal tuo utente; Continuity lo dice prima di salvarla.
+- **L'installazione installa anche Codex** (gratuito, senza abbonamento), che serve ai servizi gratuiti per lavorare sui file. Se non riesce, Continuity si installa lo stesso e la configurazione lo ripropone.
+- Bubblewrap, socat e il portachiavi di Linux sono consigliati, non più necessari.
+- Installazione: non si interrompe più alla fine quando la variabile SHELL manca (per esempio lanciata da PowerShell dentro WSL).
+
 ## 2.0.0-beta.9 — 2026-10-30
 
 - Windows: il comando `continuity` per PowerShell usa la distribuzione WSL predefinita invece di cercarne una chiamata «Ubuntu» (falliva con WSL_E_DISTRO_NOT_FOUND dove la distribuzione si chiama, per esempio, «Ubuntu-24.04»).
