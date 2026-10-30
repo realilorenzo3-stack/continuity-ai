@@ -72,8 +72,8 @@ it("shift+tab dice ogni volta dove vanno i messaggi", async () => {
     await t.renderOnce();
     return t.captureCharFrame().replace(/\s+/g, " ");
   };
-  expect(await dopo()).toMatch(/Messaggi a Qwen sul Mac · solo risposte/);
-  expect(await dopo()).toMatch(/Messaggi a Qwen sul Mac · lavora sui file/);
+  expect(await dopo()).toMatch(/Messaggi a Qwen sul computer · solo risposte/);
+  expect(await dopo()).toMatch(/Messaggi a Qwen sul computer · lavora sui file/);
   expect(await dopo()).toMatch(/Messaggi a Codex/);
   // Tornando a Codex, il modello del Mac lascia la memoria.
   await aspetta(100);

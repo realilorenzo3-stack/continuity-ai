@@ -367,7 +367,7 @@ async function sceltaAI(c: Contesto, _ruolo: Ruolo, attuale: string): Promise<st
   const gratuiti = servizi.filter((x) => x.collegato).map((x) => String(x.id));
   const crediti = (id: string) => {
     const p = providerNoto(id);
-    return p?.accesso === "abbonamento" ? "consuma il tuo abbonamento" : p?.motore === "diretto" ? "gratis" : id === "ollama" ? "sul tuo Mac, gratis" : "";
+    return p?.accesso === "abbonamento" ? "consuma il tuo abbonamento" : p?.motore === "diretto" ? "gratis" : id === "ollama" ? "sul tuo computer, gratis" : "";
   };
   const voci: Voce<string>[] = [
     {

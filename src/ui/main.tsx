@@ -187,7 +187,7 @@ function App() {
           <div>
             Un progetto. Un writer.
             <br />
-            Stato conservato sul tuo Mac.
+            Stato conservato sul tuo computer.
           </div>
         </div>
       </aside>

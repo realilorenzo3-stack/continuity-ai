@@ -165,7 +165,7 @@ export function preparaPubblicazione(
       /Authentication|could not read Username|Permission denied|403|denied/i.test(
         motivo,
       )
-        ? "GitHub non ha accettato il login di questo Mac. Collegalo una volta con «gh auth login» nel Terminale, poi riprova /pubblica."
+        ? "GitHub non ha accettato il login di questo computer. Collegalo una volta con «gh auth login» nel terminale, poi riprova /pubblica."
         : /not found|does not exist|Repository not found/i.test(motivo)
           ? `Il repository ${destinazione} non esiste o il tuo account non può vederlo.`
           : "Non riesco a raggiungere il repository: " + motivo,
@@ -273,7 +273,7 @@ export function eseguiPubblicazione(
       /rejected|non-fast-forward|fetch first/i.test(motivo)
         ? "Su GitHub nel frattempo è arrivato altro: non ho sovrascritto nulla. Riprova /pubblica, ripartirò dalla versione aggiornata."
         : /Authentication|denied|403/i.test(motivo)
-          ? "GitHub non ha accettato il login di questo Mac. Collegalo con «gh auth login», poi riprova /pubblica."
+          ? "GitHub non ha accettato il login di questo computer. Collegalo con «gh auth login», poi riprova /pubblica."
           : "Il push non è riuscito: " + motivo,
     );
   }

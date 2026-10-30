@@ -31,6 +31,7 @@ import { messaggio, pubblica, testoConsegna, type Api, type Esito } from "./clie
 import type { Voce } from "./tipi.js";
 import { pannelloFlusso } from "./flusso.js";
 import { configurazione } from "./configura.js";
+import { sistema } from "../piattaforma.js";
 import { impostaLingua, lingua, traduci, type Lingua } from "./lingua.js";
 
 export type Contesto = {
@@ -74,7 +75,7 @@ export const COMANDI_TUI: {
   { nome: "/ai", breve: "scegli chi risponde (resta finché non la cambi)", titolo: "Scegli chi risponde", gruppo: "Le AI" },
   { nome: "/collega", breve: "aggiungi un'AI: abbonamento, chiave gratuita o a consumo", titolo: "Aggiungi un'AI", gruppo: "Le AI" },
   { nome: "/modello", breve: "modello e ragionamento dell'AI", titolo: "Modello e ragionamento", gruppo: "Le AI" },
-  { nome: "/ibrida", breve: "il modello sul tuo Mac", titolo: "Il modello sul tuo Mac", gruppo: "Le AI" },
+  { nome: "/ibrida", breve: "il modello sul tuo computer", titolo: "Il modello sul tuo computer", gruppo: "Le AI" },
   { nome: "/revisore", breve: "l'AI che rivede il lavoro e suggerisce", titolo: "Il revisore", gruppo: "Le AI" },
   { nome: "/flusso", breve: "come lavorano le AI: da sola, con un controllo, con un piano", titolo: "Come lavorano le AI", gruppo: "Le AI" },
   { nome: "/connettori", breve: "accendi e spegni i connettori", titolo: "Connettori", gruppo: "Le AI" },
@@ -98,7 +99,7 @@ export function vociMenu(): Voce<string>[] {
     "/ai": ["Choose who responds", "choose who responds until you change it", "AI", "/ai"],
     "/collega": ["Add an AI", "add a subscription, free or paid API key", "AI", "/connect"],
     "/modello": ["Model and reasoning", "model and reasoning level", "AI", "/model"],
-    "/ibrida": ["AI on your Mac", "the local model on your Mac", "AI", "/hybrid"],
+    "/ibrida": ["AI on your computer", "the local model on your computer", "AI", "/hybrid"],
     "/revisore": ["Reviewer", "the AI that reviews work and suggests changes", "AI", "/reviewer"],
     "/flusso": ["How AIs work", "solo work, review, or plan", "AI", "/workflow"],
     "/connettori": ["Connectors", "turn connectors on or off", "AI", "/connectors"],
@@ -522,6 +523,27 @@ async function ragionamento(c: Contesto, argomento: string) {
   await c.aggiorna();
 }
 
+// Dopo aver collegato una chiave: dove sta, e che cosa farà il sistema.
+function notaDopoCollegamento(inglese: boolean) {
+  const s = sistema();
+  const comune = inglese
+    ? "It works on the project like the other AIs until you choose another with /ai."
+    : "Lavora sul progetto come le altre AI, finché non ne scegli un'altra con /ai.";
+  const dove =
+    s === "mac"
+      ? inglese
+        ? "On first use after each launch, macOS asks to read the key: choose Allow."
+        : "Al primo uso dopo ogni avvio il Mac chiede il permesso di leggere la chiave: scegli «Consenti»."
+      : s === "wsl"
+        ? inglese
+          ? "The key is in the Windows Credential Manager, protected by your Windows sign-in."
+          : "La chiave è nell'archivio credenziali di Windows, protetta dal tuo login di Windows."
+        : inglese
+          ? "The key is in the Linux keyring, protected by your login."
+          : "La chiave è nel portachiavi di Linux, protetta dal tuo login.";
+  return `${comune} ${dove}`;
+}
+
 async function collegaProvider(c: Contesto, argomento: string) {
   const en = () => lingua() === "en";
   const chiavi = portachiaviDiSistema(c.cartellaDati);
@@ -546,7 +568,7 @@ async function collegaProvider(c: Contesto, argomento: string) {
     const titoli = {
       abbonamento: en() ? "Subscriptions (official sign-in)" : "Abbonamenti (login ufficiale)",
       gratuito: en() ? "Free with your account" : "Gratuiti con il tuo account",
-      locale: en() ? "On your Mac" : "Sul tuo Mac",
+      locale: en() ? "On your computer" : "Sul tuo computer",
       consumo: en() ? "Pay as you go" : "A consumo (paghi quello che usi)",
     };
     const v = await c.scegli(
@@ -631,10 +653,24 @@ async function collegaProvider(c: Contesto, argomento: string) {
         continue;
       }
     }
-    try {
-      chiavi.salva(p.id, completa);
-    } catch (e) {
-      return c.avvisa("errore", messaggio(e), 10000);
+    // Se l'archivio delle chiavi non risponde (su Linux un portachiavi non
+    // attivo), il motivo si legge intero e si può riprovare dopo averlo
+    // sistemato, senza ricominciare (prova di Lorenzo su Ubuntu, 30 ottobre).
+    for (;;) {
+      try {
+        chiavi.salva(p.id, completa);
+        break;
+      } catch (e) {
+        const v = await c.scegli<boolean>(
+          en() ? "The key could not be saved" : "Non riesco a salvare la chiave",
+          [
+            { nome: en() ? "Try saving it again" : "Riprova a salvarla", valore: true },
+            { nome: en() ? "Cancel" : "Annulla", valore: false },
+          ],
+          { nota: messaggio(e) },
+        );
+        if (!v?.valore) return;
+      }
     }
     // La chiave è già nel Portachiavi: un elenco dei collegati che non si
     // scrive non deve far credere che il collegamento sia fallito.
@@ -651,7 +687,7 @@ async function collegaProvider(c: Contesto, argomento: string) {
         { nome: en() ? "Later (/ai)" : "Più tardi (/ai)", valore: false },
       ],
       {
-        nota: en() ? "It works on the project like the other AIs until you choose another with /ai. On first use after each launch, macOS asks to read the key: choose Allow." : "Lavora sul progetto come le altre AI, finché non ne scegli un'altra con /ai. Al primo uso dopo ogni avvio il Mac chiede il permesso di leggere la chiave: scegli «Consenti».",
+        nota: notaDopoCollegamento(en()),
       },
     );
     if (ora?.valore) await pannelloAI(c, p.id);
@@ -1116,7 +1152,7 @@ async function pannelloIbrida(c: Contesto) {
         })),
         { nome: "Aggiungi un compito…", valore: "nuovo", gruppo: "Compiti (la parola all'inizio del messaggio)" },
       ],
-      { nota: "Invio cambia la voce scelta. Il modello lavora sul tuo Mac: gratis, più lento delle AI in abbonamento." },
+      { nota: "Invio cambia la voce scelta. Il modello lavora sul tuo computer: gratis, più lento delle AI in abbonamento." },
     );
     if (!v) {
       await c.ricaricaIbrida();

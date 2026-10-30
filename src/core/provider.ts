@@ -316,7 +316,7 @@ export const PROVIDER: readonly ProviderNoto[] = [
   },
   {
     id: "ollama",
-    nome: "Codex · Ollama sul tuo Mac (gratuito)",
+    nome: "Codex · Ollama sul tuo computer (gratuito)",
     motore: "codex",
     accesso: "locale",
     alias: ["qwen"],
@@ -325,11 +325,11 @@ export const PROVIDER: readonly ProviderNoto[] = [
     prova: { url: "http://localhost:11434/api/version" },
     diretto: { indirizzo: "http://localhost:11434/v1" },
     gratis: "tutti",
-    nota: "Serve Ollama 0.13.3 o più recente, già avviato, con il modello scaricato. Il lavoro resta sul Mac.",
+    nota: "Serve Ollama 0.13.3 o più recente, già avviato, con il modello scaricato. Il lavoro resta sul computer.",
   },
   {
     id: "lmstudio",
-    nome: "Codex · LM Studio sul tuo Mac (gratuito)",
+    nome: "Codex · LM Studio sul tuo computer (gratuito)",
     motore: "codex",
     accesso: "locale",
     alias: ["lm-studio"],
@@ -338,7 +338,7 @@ export const PROVIDER: readonly ProviderNoto[] = [
     prova: { url: "http://localhost:1234/v1/models" },
     diretto: { indirizzo: "http://localhost:1234/v1" },
     gratis: "tutti",
-    nota: "Serve LM Studio con il server locale acceso e un modello caricato. Il lavoro resta sul Mac.",
+    nota: "Serve LM Studio con il server locale acceso e un modello caricato. Il lavoro resta sul computer.",
   },
 ];
 

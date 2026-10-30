@@ -8,14 +8,14 @@ import type { Contesto } from "./comandi.js";
 import type { Voce } from "./tipi.js";
 import { lingua } from "./lingua.js";
 
-const nomeBreve = (id: string) => id === "ollama" && lingua() === "en" ? "Qwen on your Mac" : nomeCorto(id);
+const nomeBreve = (id: string) => id === "ollama" && lingua() === "en" ? "Qwen on your computer" : nomeCorto(id);
 const descriviIncaricoUI = (x: Incarico) => lingua() === "en"
   ? `${nomeBreve(x.ai)}: ${x.compito} (${x.tipo === "scrive" ? "does the work" : x.quando === "fine" ? "reviews · once at the end" : "reviews · after each work step"})`
   : descriviIncarico(x);
 // Come si scrive l'AI dopo la @: il nome del provider; per Ollama «qwen».
 const maniglia = (id: string) => (id === "ollama" ? "qwen" : id);
 
-// Le AI che si possono chiamare: la sequenza, Qwen sul Mac e i gratuiti
+// Le AI che si possono chiamare: la sequenza, Qwen sul computer e i gratuiti
 // collegati, tutte sullo stesso piano (28 ottobre).
 export async function scegliAI(c: Contesto, titolo: string): Promise<string | undefined> {
   const sequenza: string[] = c.run().providers ?? ["codex", "claude"];

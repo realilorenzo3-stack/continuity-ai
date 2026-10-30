@@ -741,9 +741,9 @@ export function App(props: Opzioni & { onEsci: () => void }) {
       avvisa(
         "info",
         prossimo === "risposte"
-          ? `Messaggi a ${locale} sul Mac · solo risposte`
+          ? `Messaggi a ${locale} sul computer · solo risposte`
           : prossimo === "file"
-            ? `Messaggi a ${locale} sul Mac · lavora sui file`
+            ? `Messaggi a ${locale} sul computer · lavora sui file`
             : `Messaggi a ${nomeAI(ai())}`,
         4000,
       );
@@ -905,7 +905,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
         : p?.accesso === "chiave"
         ? lingua() === "en" ? "API key" : "chiave API"
         : p?.accesso === "locale"
-          ? lingua() === "en" ? "on your Mac" : "sul tuo Mac"
+          ? lingua() === "en" ? "on your computer" : "sul tuo computer"
           : "";
   };
   const consumo = () => {
@@ -973,9 +973,9 @@ export function App(props: Opzioni & { onEsci: () => void }) {
         modello={destinatario() !== "sequenza" ? ibrida()?.config.modello : modello()}
         accesso={
           destinatario() === "risposte"
-            ? "sul tuo Mac · solo risposte"
+            ? "sul tuo computer · solo risposte"
             : destinatario() === "file"
-              ? "sul tuo Mac · lavora sui file"
+              ? "sul tuo computer · lavora sui file"
               : accesso()
         }
         destinatario={destinatario() !== "sequenza" ? "AI ibrida" : undefined}

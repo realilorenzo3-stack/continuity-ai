@@ -17,7 +17,7 @@ import { aCapo } from "./acapo.js";
 import { lingua } from "./lingua.js";
 
 import type { Voce } from "./tipi.js";
-import { apriLink, leggiAppunti } from "../piattaforma.js";
+import { apriLink, appuntiLeggibili, leggiAppunti, tastoIncolla } from "../piattaforma.js";
 export type { Voce };
 
 // Il pannello dei dialoghi, come in opencode (docs/rea/confronto-interfaccia.md
@@ -289,7 +289,17 @@ export function Domanda(props: {
     }
     if (!props.nascosta) return;
     if (t.name === "return") return props.onRisposta(segreto());
-    if (t.name === "tab") return incolla(appunti(), "appunti");
+    if (t.name === "tab") {
+      // Su Linux senza wl-clipboard né xclip gli appunti non si leggono: lo
+      // si dice, invece di «negli appunti non c'è testo».
+      if (!appuntiLeggibili())
+        return setStato(
+          lingua() === "en"
+            ? `Can't read the clipboard here: paste with ${tastoIncolla()} (or install wl-clipboard or xclip)`
+            : `Qui non riesco a leggere gli appunti: incolla con ${tastoIncolla()} (oppure installa wl-clipboard o xclip)`,
+        );
+      return incolla(appunti(), "appunti");
+    }
     if (t.name === "backspace") {
       setStato("");
       return setSegreto((x) => x.slice(0, -1));
@@ -336,7 +346,7 @@ export function Domanda(props: {
           <text fg={segreto() ? tema.testo : tema.tenue}>
             {segreto()
               ? "•".repeat(Math.min(segreto().length, 40)) + `  (${segreto().length} caratteri)`
-              : lingua() === "en" ? "paste the key here (cmd+V)" : "incolla qui la chiave (cmd+V)"}
+              : lingua() === "en" ? `paste the key here (${tastoIncolla()})` : `incolla qui la chiave (${tastoIncolla()})`}
           </text>
         </box>
       </Show>
@@ -345,7 +355,7 @@ export function Domanda(props: {
       </Show>
       <text fg={tema.tenue} marginTop={1}>
         {props.nascosta
-          ? (lingua() === "en" ? ["cmd+V paste", "tab uses clipboard", ...(props.link ? ["ctrl+o opens the key page"] : []), "enter connects"] : ["cmd+V incolla", "tab usa gli appunti", ...(props.link ? ["ctrl+o apre la pagina della chiave"] : []), "invio collega"]).join(" · ")
+          ? (lingua() === "en" ? [`${tastoIncolla()} paste`, "tab uses clipboard", ...(props.link ? ["ctrl+o opens the key page"] : []), "enter connects"] : [`${tastoIncolla()} incolla`, "tab usa gli appunti", ...(props.link ? ["ctrl+o apre la pagina della chiave"] : []), "invio collega"]).join(" · ")
           : lingua() === "en" ? "enter confirms" : "invio conferma"}
       </text>
       </box>

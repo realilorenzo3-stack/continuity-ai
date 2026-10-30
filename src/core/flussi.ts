@@ -289,9 +289,9 @@ export function idDaNome(nome: string, usati: Iterable<string>): string {
 export function nomeAI(ai: string): string {
   if (ai === "sequenza") return "la sequenza";
   if (ai === "gratuito") return "un gratuito";
-  // «Codex · Qwen sul Mac (Ollama)» e simili: il motore non è il nome dell'AI
+  // «Codex · Qwen sul computer (Ollama)» e simili: il motore non è il nome dell'AI
   // (28 ottobre: il passo di Qwen compariva come «Codex»).
-  if (ai === "ollama") return "Qwen sul Mac";
+  if (ai === "ollama") return "Qwen sul computer";
   const parti = (providerNoto(ai)?.nome ?? ai).split(" · ");
   return ai !== "codex" && ai !== "claude" && /^(Codex|Claude Code)$/.test(parti[0]) && parti[1] ? parti[1].replace(/\s*\(.*\)\s*$/, "").trim() : parti[0];
 }

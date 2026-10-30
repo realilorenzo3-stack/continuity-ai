@@ -89,11 +89,11 @@ it("il flusso al volo: in ordine; chi controlla dopo ogni pezzo o una volta alla
   // Dal 28 ottobre anche i gratuiti fanno il lavoro.
   expect(problemaIncarichi([{ ai: "groq", compito: "x", tipo: "scrive" }])).toBeUndefined();
   expect(["codex", "claude", "groq", "google", "ollama", "openrouter"].map(nomeCorto)).toEqual([
-    "Codex", "Claude Code", "Groq", "Google AI Studio", "Qwen sul Mac", "OpenRouter",
+    "Codex", "Claude Code", "Groq", "Google AI Studio", "Qwen sul computer", "OpenRouter",
   ]);
   expect(problemaIncarichi([{ ai: "boh", compito: "x", tipo: "scrive" }])).toMatch(/non conosco/);
   // Il nome dell'AI nei passi del flusso: Qwen non è «Codex» (28 ottobre).
-  expect(["ollama", "codex", "claude", "groq"].map(nomeAI)).toEqual(["Qwen sul Mac", "Codex", "Claude Code", "Groq (gratuito)"]);
+  expect(["ollama", "codex", "claude", "groq"].map(nomeAI)).toEqual(["Qwen sul computer", "Codex", "Claude Code", "Groq (gratuito)"]);
 });
 
 async function sessione(risposte = ["- app.js:1 — manca la validazione → aggiungila", "NESSUN SUGGERIMENTO", "NESSUN SUGGERIMENTO"]) {

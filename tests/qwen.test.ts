@@ -47,7 +47,7 @@ it("le istruzioni dicono a Qwen che gira sul Mac, senza internet e senza file", 
     motore.avviaCompitoLocale("x", "Fai una ricerca su Dante", "chiedi");
     for (let i = 0; i < 50 && !corpi.length; i++) await new Promise((ok) => setTimeout(ok, 50));
     const sistema = corpi[0].messages[0].content as string;
-    expect(sistema).toMatch(/gira sul Mac della persona con Ollama, senza internet/);
+    expect(sistema).toMatch(/gira sul computer della persona con Ollama, senza internet/);
     expect(sistema).toMatch(/non puoi cercare sul web/);
     expect(sistema).toMatch(/Rispondi alla persona in italiano/);
     expect(corpi[0].model).toBe("qwen3.5:4b");

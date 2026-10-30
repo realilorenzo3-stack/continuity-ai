@@ -163,3 +163,15 @@ export function processiConCartellaIn(radice: string, s: Sistema = sistema()): n
   }
   return trovati;
 }
+
+// Il tasto per incollare nel terminale: cmd+V sul Mac; ctrl+shift+V nei
+// terminali di Linux e in Windows Terminal (WSL).
+export function tastoIncolla(s: Sistema = sistema()): string {
+  return s === "mac" ? "cmd+V" : "ctrl+shift+V";
+}
+
+// Si possono leggere gli appunti? Su Linux servono wl-clipboard, xclip o xsel.
+export function appuntiLeggibili(s: Sistema = sistema(), c = esiste): boolean {
+  return Boolean(comandiAppunti(s, c).leggi);
+}
+

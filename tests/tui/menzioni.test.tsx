@@ -58,7 +58,7 @@ it("«@» apre il pannello delle AI; la scelta mette il nome; l'invio chiede «c
   expect(schermo).toMatch(/Codex\s+@codex/);
   expect(schermo).not.toMatch(/Controllano|Lavorano sui file/);
   expect(schermo).toMatch(/Groq\s+@groq/);
-  expect(schermo).toMatch(/Qwen sul Mac\s+@qwen/);
+  expect(schermo).toMatch(/Qwen sul computer\s+@qwen/);
   // Invio sulla prima (Codex): il nome nel campo.
   t.mockInput.pressEnter();
   await aspetta(200);

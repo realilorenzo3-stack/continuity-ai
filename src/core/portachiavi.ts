@@ -156,7 +156,18 @@ type Operazioni = {
   togli(servizio: string, provider: string): boolean;
   // Il motivo, in parole semplici, quando l'archivio non risponde.
   nonDisponibile: string;
+  // Un motivo più preciso, dal messaggio del programma, se lo si riconosce.
+  spiega?: (errore: string) => string | undefined;
 };
+
+// Che cosa vuol dire l'errore di secret-tool, per chi usa Ubuntu.
+export function spiegaPortachiaviLinux(errore: string): string | undefined {
+  if (/ENOENT|not found|spawn secret-tool/i.test(errore))
+    return "Manca secret-tool, il programma che parla con il portachiavi di Linux. Su Ubuntu e Debian: sudo apt install libsecret-tools gnome-keyring";
+  if (/autolaunch D-Bus|DBUS_SESSION_BUS_ADDRESS|org\.freedesktop\.secrets|was not provided by any \.service|No such secret collection|Cannot create an item in a locked collection/i.test(errore))
+    return "Il portachiavi di Linux non è attivo in questa sessione. Su Ubuntu con il desktop parte da solo all'accesso: se hai appena installato gnome-keyring, esci e rientra nel desktop (o riavvia), poi riprova. Da un terminale remoto (SSH) il portachiavi del desktop non c'è.";
+  return undefined;
+}
 
 function portachiaviConOperazioni(cartellaDati: string, op: Operazioni): Portachiavi {
   const servizio = servizioPortachiavi(cartellaDati);
@@ -167,7 +178,7 @@ function portachiaviConOperazioni(cartellaDati: string, op: Operazioni): Portach
     const r = op.leggi(servizio, provider);
     // 0: trovata; 1 o 44: non c'è. Altro: l'archivio non risponde.
     if (r.stato !== 0 && r.stato !== 1 && r.stato !== 44)
-      throw Error(`${op.nonDisponibile}${r.errore ? ` (${r.errore.trim().slice(0, 160)})` : ""}`);
+      throw Error(op.spiega?.(r.errore) ?? `${op.nonDisponibile}${r.errore ? ` (${r.errore.trim().slice(0, 160)})` : ""}`);
     const chiave = r.stato === 0 ? r.uscita.replace(/\r?\n$/, "") || undefined : undefined;
     if (chiave) ricordaSegreto(chiave);
     memoria.set(provider, { quando: Date.now(), chiave });
@@ -189,7 +200,7 @@ function portachiaviConOperazioni(cartellaDati: string, op: Operazioni): Portach
       const r = op.salva(servizio, provider, chiave);
       memoria.delete(provider);
       if (r.stato !== 0)
-        throw Error(`${op.nonDisponibile}${r.errore ? ` (${r.errore.trim().slice(0, 160)})` : ""}`);
+        throw Error(op.spiega?.(r.errore) ?? `${op.nonDisponibile}${r.errore ? ` (${r.errore.trim().slice(0, 160)})` : ""}`);
     },
     togli(provider) {
       memoria.delete(provider);
@@ -206,6 +217,7 @@ export function portachiaviLinux(cartellaDati: string, comando = "secret-tool"):
   return portachiaviConOperazioni(cartellaDati, {
     nonDisponibile:
       "Il portachiavi di Linux non risponde: serve libsecret con un portachiavi attivo (su Ubuntu e Debian: sudo apt install libsecret-tools gnome-keyring)",
+    spiega: spiegaPortachiaviLinux,
     leggi(servizio, provider) {
       const r = esegui(["lookup", "service", servizio, "account", provider]);
       // secret-tool risponde 1 sia per «non c'è» sia per un errore: l'errore

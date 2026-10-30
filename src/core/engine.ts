@@ -2286,7 +2286,7 @@ export class Engine {
           // Il modello sa dove gira e che cosa non può fare (25 ottobre: diceva
           // «non posso sapere se giro in locale», inventava una ricerca).
           istruzioni:
-            `Sei ${nomeLocale(config.modello)} (${config.modello}), un modello che gira sul Mac della persona con Ollama, senza internet: non puoi cercare sul web, non puoi leggere né modificare i file e non esegui comandi. ` +
+            `Sei ${nomeLocale(config.modello)} (${config.modello}), un modello che gira sul computer della persona con Ollama, senza internet: non puoi cercare sul web, non puoi leggere né modificare i file e non esegui comandi. ` +
             `Se ti chiedono una ricerca o notizie recenti, dillo e rispondi con ciò che sai, avvertendo che su date, nomi e fatti puoi sbagliare. ${istruzioneLingua(this.linguaPer(r, [testo]))} Non mescolare parole o caratteri di altre lingue.\n\n` +
             compito.istruzioni,
           contesto,
@@ -2597,8 +2597,8 @@ export class Engine {
           r,
           "switch.started",
           opzioni.provider
-            ? `Questo turno lo fa ${scelto === PROVIDER_IBRIDO ? `${ibrida.modello} sul tuo Mac (AI ibrida)` : scelto}`
-            : `Tutte le AI sono senza crediti · continua ${ibrida.modello} sul tuo Mac (AI ibrida)`,
+            ? `Questo turno lo fa ${scelto === PROVIDER_IBRIDO ? `${ibrida.modello} sul tuo computer (AI ibrida)` : scelto}`
+            : `Tutte le AI sono senza crediti · continua ${ibrida.modello} sul tuo computer (AI ibrida)`,
         );
       r.agent = scelto;
       preferito = undefined;

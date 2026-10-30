@@ -55,9 +55,9 @@ const OGNI = /\b(dopo ogni|alla fine di ogni|a ogni|ad ogni|per ogni|after (each
 
 // Il nome da mostrare: «Groq (gratuito)» → «Groq»; «Codex · abbonamento
 // ChatGPT» → «Codex». Chi gira attraverso Codex o Claude Code si chiama con la
-// seconda parte («Codex · OpenRouter …» → «OpenRouter»); Ollama è Qwen sul Mac.
+// seconda parte («Codex · OpenRouter …» → «OpenRouter»); Ollama è Qwen sul computer.
 export function nomeCorto(id: string): string {
-  if (id === "ollama") return "Qwen sul Mac";
+  if (id === "ollama") return "Qwen sul computer";
   const parti = (providerNoto(id)?.nome ?? id).split(" · ");
   const scelta = id !== "codex" && id !== "claude" && /^(Codex|Claude Code)$/.test(parti[0]) && parti[1] ? parti[1] : parti[0];
   return scelta.replace(/\s*\(.*\)\s*$/, "").trim();

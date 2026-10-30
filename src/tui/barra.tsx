@@ -105,7 +105,7 @@ export function Barra(props: {
                   ? en() ? "free plan, with your key" : "piano gratuito, con la tua chiave"
                   : accesso() === "chiave"
                   ? en() ? "API key, pay as you go" : "con chiave API, a consumo"
-                  : en() ? "on your Mac, free" : "sul tuo Mac, gratuito"}
+                  : en() ? "on your computer, free" : "sul tuo computer, gratuito"}
             </text>
           )}
         </Show>

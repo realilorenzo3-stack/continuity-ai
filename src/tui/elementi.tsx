@@ -122,7 +122,7 @@ export function VoceConversazione(props: {
           </Show>
           <Show when={e().ai && !["codex", "claude"].includes(e().ai) && props.locale?.(e().ai)}>
             <text fg={coloreAI(e().ai)} marginTop={1}>
-              {nomeAI(e().ai) + (lingua() === "en" ? " · on your Mac · Hybrid AI" : " · sul tuo Mac · AI ibrida")}
+              {nomeAI(e().ai) + (lingua() === "en" ? " · on your computer · Hybrid AI" : " · sul tuo computer · AI ibrida")}
             </text>
           </Show>
         </box>

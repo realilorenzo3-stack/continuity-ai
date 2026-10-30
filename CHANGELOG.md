@@ -4,6 +4,13 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.4 — 2026-10-30
+
+- Linux e Windows: niente più «Mac» nei testi. «Il modello sul tuo computer», «Qwen sul computer», e il tasto giusto per incollare (ctrl+shift+V su Linux e in Windows Terminal, cmd+V sul Mac).
+- `/collega`: se la chiave non si può salvare, il motivo si legge intero in un riquadro, con «Riprova a salvarla», invece di un avviso tagliato. Su Linux il motivo dice che cosa manca (secret-tool) o che il portachiavi non è attivo nella sessione, e come sistemarlo.
+- Dopo il collegamento la nota dice dove sta la chiave sul tuo sistema (Portachiavi, portachiavi di Linux, archivio credenziali di Windows).
+- Il tasto tab per incollare dagli appunti, su Linux senza wl-clipboard o xclip, dice di incollare con ctrl+shift+V.
+
 ## 2.0.0-beta.3 — 2026-10-29
 
 - Installazione: alla fine l'installatore dice con il comando esatto come far comparire `continuity` nel terminale già aperto (`source ~/.bashrc`), e raccoglie in un solo `sudo apt install` i programmi che mancano su Linux.

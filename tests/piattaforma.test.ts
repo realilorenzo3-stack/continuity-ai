@@ -127,7 +127,8 @@ it("Linux senza portachiavi attivo: un errore che dice che cosa installare", () 
   const comando = join(base, "secret-tool");
   writeFileSync(comando, "#!/bin/sh\necho 'Cannot autolaunch D-Bus without X11 $DISPLAY' >&2\nexit 1\n");
   chmodSync(comando, 0o755);
-  expect(() => portachiaviLinux(join(base, "dati"), comando).leggi("groq")).toThrow(/libsecret-tools gnome-keyring/);
+  // D-Bus senza sessione: il portachiavi non è attivo, e lo si dice così.
+  expect(() => portachiaviLinux(join(base, "dati"), comando).leggi("groq")).toThrow(/non è attivo in questa sessione/);
   expect(portachiaviLinux(join(base, "dati"), comando).esiste("groq")).toBe(false);
 });
 
@@ -171,3 +172,22 @@ if (script.includes("Remove")) { if (!fs.existsSync(f)) process.exit(44); fs.rmS
   // La chiave non è mai passata sulla riga di comando.
   expect(readFileSync(registro, "utf8")).not.toContain("nvapi-wsl-finta");
 });
+
+it("Linux: i motivi del portachiavi in parole semplici, con il comando giusto", async () => {
+  const { spiegaPortachiaviLinux } = await import("../src/core/portachiavi.js");
+  expect(spiegaPortachiaviLinux("spawnSync secret-tool ENOENT")).toMatch(/sudo apt install libsecret-tools gnome-keyring$/);
+  expect(spiegaPortachiaviLinux("The name org.freedesktop.secrets was not provided by any .service files")).toMatch(/esci e rientra nel desktop/);
+  expect(spiegaPortachiaviLinux("qualcos'altro")).toBeUndefined();
+  // secret-tool assente del tutto: lo stesso messaggio, dall'errore del sistema.
+  expect(() => portachiaviLinux(join(temp("piatt-assente-"), "dati"), "/percorso/che/non/esiste/secret-tool").leggi("groq")).toThrow(/Manca secret-tool/);
+});
+
+it("il tasto per incollare e gli appunti, per sistema", async () => {
+  const { tastoIncolla, appuntiLeggibili } = await import("../src/piattaforma.js");
+  expect(tastoIncolla("mac")).toBe("cmd+V");
+  expect(tastoIncolla("linux")).toBe("ctrl+shift+V");
+  expect(tastoIncolla("wsl")).toBe("ctrl+shift+V");
+  expect(appuntiLeggibili("linux", () => false)).toBe(false);
+  expect(appuntiLeggibili("linux", (n) => n === "xclip")).toBe(true);
+});
+

@@ -22,7 +22,7 @@ const GRUPPI: [Gruppo, string][] = [
   ["abbonamento", "Abbonamenti (login ufficiale, nessun costo in più)"],
   ["gratuito", "Gratuiti con il tuo account (chiave gratuita, con limiti)"],
   ["consumo", "Chiavi API a consumo"],
-  ["locale", "Sul tuo Mac (gratuiti)"],
+  ["locale", "Sul tuo computer (gratuiti)"],
 ];
 export function gruppoDi(p: ProviderNoto): Gruppo {
   if (p.accesso === "abbonamento" || p.accesso === "locale") return p.accesso;

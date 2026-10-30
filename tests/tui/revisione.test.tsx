@@ -252,7 +252,7 @@ it("AI ibrida: shift+tab cambia destinatario, i compiti con la parola vanno al m
   await t.renderOnce();
   const s = t.captureCharFrame();
   expect(s).toMatch(/Risposta locale\./);
-  expect(s).toMatch(/Qwen · sul tuo Mac · AI ibrida/);
+  expect(s).toMatch(/Qwen · sul tuo computer · AI ibrida/);
   expect(base.chiamate.some((c) => c.percorso === "/runs/x/turn")).toBe(false);
   // Torna alla sequenza (risposte → file → sequenza) e prova un compito.
   t.mockInput.pressTab({ shift: true });

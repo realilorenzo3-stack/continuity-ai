@@ -74,7 +74,7 @@ it("i gratuiti in cima, la chiave incollata con cmd+V, collegato al primo colpo"
   let s = await schermo();
   if (process.env.CONTINUITY_ANTEPRIMA) console.log(`\n===== /collega =====\n${s}`);
   expect(s.indexOf("Gratuiti con il tuo account")).toBeGreaterThan(-1);
-  expect(s.indexOf("Gratuiti con il tuo account")).toBeLessThan(s.indexOf("Sul tuo Mac") === -1 ? Infinity : s.indexOf("Sul tuo Mac"));
+  expect(s.indexOf("Gratuiti con il tuo account")).toBeLessThan(s.indexOf("Sul tuo computer") === -1 ? Infinity : s.indexOf("Sul tuo computer"));
   await t.mockInput.typeText("groq");
   t.mockInput.pressEnter();
   s = await schermo();
