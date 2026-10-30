@@ -34,9 +34,15 @@ continuity_installa_windows() {
   mkdir -p "$continuity_dove" || return 1
   continuity_dati_cmd=
   [ -n "${3:-}" ] && continuity_dati_cmd=" env \"CONTINUITY_DATA_DIR=$3\""
+  # La distribuzione si nomina solo se se ne conosce il nome vero: senza, si
+  # usa quella predefinita di WSL. Prima, senza nome, si scriveva «Ubuntu», e
+  # dove la distribuzione si chiama «Ubuntu-24.04» il comando falliva con
+  # WSL_E_DISTRO_NOT_FOUND (prova di Lorenzo su Windows, 30 ottobre).
+  continuity_distro=
+  [ -n "${2:-}" ] && continuity_distro="-d \"$2\" "
   # CRLF: è un file di Windows.
-  printf '@echo off\r\nrem Continuity gira in WSL (%s): questo comando lo avvia nella cartella corrente.\r\nwsl.exe -d "%s" --cd "%%CD%%" --%s "%s" %%*\r\n' \
-    "$2" "$2" "$continuity_dati_cmd" "$1" >"$continuity_dove/continuity.cmd" || return 1
+  printf '@echo off\r\nrem Continuity gira in WSL%s: questo comando lo avvia nella cartella corrente.\r\nwsl.exe %s--cd "%%CD%%" --%s "%s" %%*\r\n' \
+    "${2:+ ($2)}" "$continuity_distro" "$continuity_dati_cmd" "$1" >"$continuity_dove/continuity.cmd" || return 1
   continuity_dove_win=$(wslpath -w "$continuity_dove") || return 1
   continuity_q=$(printf '%s' "$continuity_dove_win" | sed "s/'/''/g")
   continuity_powershell "\$d='$continuity_q';\$p=[Environment]::GetEnvironmentVariable('Path','User');if(-not \$p){\$p=''};if((\$p -split ';') -notcontains \$d){[Environment]::SetEnvironmentVariable('Path',((\$p.TrimEnd(';')+';'+\$d).TrimStart(';')),'User')}" >/dev/null 2>&1 || return 1

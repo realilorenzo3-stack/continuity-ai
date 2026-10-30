@@ -4,6 +4,10 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.9 — 2026-10-30
+
+- Windows: il comando `continuity` per PowerShell usa la distribuzione WSL predefinita invece di cercarne una chiamata «Ubuntu» (falliva con WSL_E_DISTRO_NOT_FOUND dove la distribuzione si chiama, per esempio, «Ubuntu-24.04»).
+
 ## 2.0.0-beta.8 — 2026-10-30
 
 - Groq, NVIDIA, Google e gli altri servizi gratuiti lavorano sui file attraverso il programma Codex (non serve l'abbonamento ChatGPT). Se Codex non è installato, Continuity lo dice chiaramente e offre il comando ufficiale per installarlo: subito dopo aver collegato la chiave, quando scrivi un messaggio, e nella configurazione iniziale («il tuo sistema»).

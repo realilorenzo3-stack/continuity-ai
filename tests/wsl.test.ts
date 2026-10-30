@@ -138,6 +138,13 @@ it("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity
   expect(script).toContain("SetEnvironmentVariable('Path'");
   expect(script).toContain("'User'");
 
+  // Senza il nome della distribuzione: quella predefinita di WSL, senza -d
+  // (prova di Lorenzo su Windows: «Ubuntu» scritto a mano non esisteva).
+  esegui("continuity_installa_windows", "/home/anna/.local/bin/continuity", "");
+  expect(readFileSync(cmd, "utf8")).toBe(
+    '@echo off\r\nrem Continuity gira in WSL: questo comando lo avvia nella cartella corrente.\r\nwsl.exe --cd "%CD%" -- "/home/anna/.local/bin/continuity" %*\r\n',
+  );
+
   // Con una cartella dati diversa da quella di serie, la porta con sé.
   esegui("continuity_installa_windows", "/home/anna/.local/bin/continuity", "Debian", "/home/anna/dati prova");
   expect(readFileSync(cmd, "utf8")).toContain('wsl.exe -d "Debian" --cd "%CD%" -- env "CONTINUITY_DATA_DIR=/home/anna/dati prova" "/home/anna/.local/bin/continuity" %*');

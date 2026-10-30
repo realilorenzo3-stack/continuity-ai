@@ -319,7 +319,7 @@ echo "Installato: $continuity_bin/continuity"
 # di Windows (scripts/windows.sh).
 if [ "$(uname -s)" = Linux ] && { [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; }; then
   . "$continuity_source/scripts/windows.sh"
-  if continuity_comando_win=$(continuity_installa_windows "$continuity_bin/continuity" "${WSL_DISTRO_NAME:-Ubuntu}" "${CONTINUITY_DATA_DIR:-}"); then
+  if continuity_comando_win=$(continuity_installa_windows "$continuity_bin/continuity" "${WSL_DISTRO_NAME:-}" "${CONTINUITY_DATA_DIR:-}"); then
     echo "Su Windows: apri un nuovo PowerShell nella cartella del progetto e scrivi continuity ($continuity_comando_win)"
   else
     echo "Su Windows il comando continuity non è stato creato: da PowerShell usa «wsl continuity»."
