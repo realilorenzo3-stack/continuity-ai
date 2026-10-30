@@ -126,16 +126,40 @@ it("/collega per un abbonamento: avviso, login ufficiale nel terminale (che apre
   expect(await collegaAbbonamento(no.c, providerNoto("codex")!, dipendenze as any)).toBe(false);
   expect(no.terminale).toEqual([]);
 
-  // Programma non installato: il comando ufficiale, nessun login.
-  const assente = contesto([true]);
-  await collegaAbbonamento(assente.c, providerNoto("claude")!, {
+  // Programma non installato: «Installalo adesso» esegue l'installatore
+  // ufficiale nel terminale, poi si passa al login.
+  let installato = false;
+  let collegatoDopo = false;
+  const assente = contesto([true, true]);
+  assente.c.nelTerminale = async (comando: string, argomenti: string[]) => {
+    assente.terminale.push([comando, ...argomenti]);
+    if (!installato) installato = true;
+    else collegatoDopo = true;
+  };
+  const esito = await collegaAbbonamento(assente.c, providerNoto("claude")!, {
+    providerStatus: () =>
+      !installato
+        ? { connected: false, detail: "CLI non installata o non nel PATH" }
+        : collegatoDopo
+          ? { connected: true, detail: "2.1.300, abbonamento claude.ai" }
+          : { connected: false, detail: "2.1.300, serve un abbonamento claude.ai" },
+    providerLogin: () => ({ binary: "/bin/claude", args: ["auth", "login", "--claudeai"], env: {}, cwd: "/", note: "" }),
+  } as any);
+  expect(assente.riquadri[0].titolo).toBe("Claude Code non è installato");
+  expect(assente.terminale[0]).toEqual(["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"]);
+  expect(assente.riquadri[1].titolo).toBe("Collegare Claude Code?");
+  expect(assente.terminale[1]).toEqual(["/bin/claude", "auth", "login", "--claudeai"]);
+  expect(esito).toBe(true);
+  // «Non ora»: niente installazione.
+  const noInstalla = contesto([false]);
+  noInstalla.c.nelTerminale = async (comando: string) => void noInstalla.terminale.push([comando]);
+  await collegaAbbonamento(noInstalla.c, providerNoto("codex")!, {
     providerStatus: () => ({ connected: false, detail: "CLI non installata o non nel PATH" }),
     providerLogin: () => {
       throw Error("non deve partire");
     },
   } as any);
-  expect(assente.riquadri[0].titolo).toBe("Claude Code non è installato");
-  expect(assente.riquadri[0].nota).toContain("curl -fsSL https://claude.ai/install.sh | bash");
+  expect(noInstalla.terminale).toEqual([]);
 });
 
 it("in inglese i tre messaggi si traducono", async () => {

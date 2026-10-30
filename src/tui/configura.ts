@@ -10,7 +10,7 @@ import { comeInstallare, comeInstallareOllama, controllaSistema, type Requisito 
 import { indirizzoOllama } from "../core/ibrida.js";
 import { providerLogin, providerStatus } from "../cli/providers.js";
 import { copiaNegliAppunti, sistema } from "../piattaforma.js";
-import { eseguiComando, ordine, pannelloRevisore, type Contesto } from "./comandi.js";
+import { eseguiComando, installaCli, ordine, pannelloRevisore, type Contesto } from "./comandi.js";
 import { lingua } from "./lingua.js";
 import type { Voce } from "./tipi.js";
 
@@ -126,7 +126,7 @@ export async function configurazione(c: Contesto, dipendenze = { controllaSistem
           descrizione: connected
             ? detail
             : assente
-              ? `${t("non installato · invio copia il comando ufficiale", "not installed · enter copies the official command")}: ${comeInstallare(cli)}`
+              ? `${t("non installato · invio lo installa con il comando ufficiale", "not installed · enter installs it with the official command")}: ${comeInstallare(cli)}`
               : `${detail} · ${t("invio apre il login ufficiale", "enter opens the official sign-in")}`,
           valore: { cli, azione: (assente ? "installa" : "collega") as "installa" | "collega" },
           gruppo: t("Abbonamenti (facoltativi)", "Subscriptions (optional)"),
@@ -149,7 +149,8 @@ export async function configurazione(c: Contesto, dipendenze = { controllaSistem
       break;
     }
     if (typeof v.valore === "object") {
-      if (v.valore.azione === "installa") offri(c, comeInstallare(v.valore.cli));
+      if (v.valore.azione === "installa")
+        c.nelTerminale ? await installaCli(c, v.valore.cli, nomi[v.valore.cli]) : offri(c, comeInstallare(v.valore.cli));
       else if (c.nelTerminale) {
         // Prima si avvisa: il login ufficiale prende tutto il terminale
         // (richiesta di Lorenzo del 29 ottobre).

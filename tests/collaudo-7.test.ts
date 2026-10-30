@@ -173,6 +173,10 @@ it("CT-2.0-606: in inglese anche i nomi predefiniti dentro titoli e passi, l'att
       "Workflow ‘Plan, work and review’. Esc leaves it waiting; enter opens it again.",
     );
     expect(traduci("Groq: limite al minuto del piano gratuito, aspetto 1 s e riprovo")).toBe("Groq: free plan per-minute limit, waiting 1 s and retrying");
+    // L'avviso di oggi (una volta per turno, 30 ottobre).
+    expect(traduci("Groq: il piano gratuito accetta poche richieste al minuto, quindi lavora a scatti, con pause fra una richiesta e l'altra. Continuo da solo.")).toBe(
+      "Groq: the free plan accepts few requests per minute, so it works in bursts, with pauses between requests. I'll keep going on my own.",
+    );
     expect(
       traduci("Flusso «Lavora» concluso con problemi: Dopo 2 giri di correzione resta 1 problema: lo passo all'AI con il prossimo messaggio (puoi scartarlo in /revisore)"),
     ).toBe("Workflow ‘Work’ completed with issues: After 2 review rounds 1 issue remains: it goes to the AI with your next message (you can discard it in /reviewer)");

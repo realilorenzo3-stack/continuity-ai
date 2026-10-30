@@ -546,7 +546,14 @@ export async function collegaAbbonamento(
   const en = lingua() === "en";
   const cli = p.motore as "codex" | "claude";
   const nome = nomeDaCollegare(p);
-  const prima = dipendenze.providerStatus(cli, c.cartellaDati);
+  let prima = dipendenze.providerStatus(cli, c.cartellaDati);
+  // Il programma manca: lo si installa da qui, con il suo installatore
+  // ufficiale (30 ottobre: «la stessa cosa di Codex»), poi si prosegue con il
+  // login. Senza terminale da lasciare, il comando va negli appunti.
+  if (/non installata|not found/i.test(prima.detail) && c.nelTerminale) {
+    if (!(await installaCli(c, cli, nome, dipendenze.providerStatus))) return false;
+    prima = dipendenze.providerStatus(cli, c.cartellaDati);
+  }
   if (prima.connected) {
     c.avvisa("ok", en ? `${nome} is already connected · ${prima.detail}` : `${nome} è già collegato · ${prima.detail}`, 6000);
     return true;
@@ -584,6 +591,37 @@ export async function collegaAbbonamento(
   }
   c.avvisa("avviso", en ? `${nome} is not connected yet: ${dopo.detail}` : `${nome} non risulta ancora collegato: ${dopo.detail}`, 10000);
   return false;
+}
+
+// Installa Codex o Claude Code con il loro installatore ufficiale, nel
+// terminale (l'interfaccia si sospende e torna). true se dopo il programma c'è.
+export async function installaCli(
+  c: Contesto,
+  cli: "codex" | "claude",
+  nome: string,
+  stato: typeof providerStatus = providerStatus,
+): Promise<boolean> {
+  const en = lingua() === "en";
+  const comando = comeInstallare(cli);
+  const v = await c.scegli<boolean>(en ? `${nome} is not installed` : `${nome} non è installato`, [
+    { nome: en ? "Install it now" : "Installalo adesso", descrizione: comando, valore: true },
+    { nome: en ? "Not now" : "Non ora", valore: false },
+  ], {
+    nota: en
+      ? `Continuity runs the official installer of ${nome} in this terminal (no password needed), then you come back here.`
+      : `Continuity esegue l'installatore ufficiale di ${nome} in questo terminale (senza password), poi torni qui.`,
+  });
+  if (!v?.valore || !c.nelTerminale) return false;
+  await c.nelTerminale("sh", ["-c", comando], process.env, c.cartellaDati);
+  const fatto = /non installata|not found/i.test(stato(cli, c.cartellaDati).detail) === false;
+  c.avvisa(
+    fatto ? "ok" : "errore",
+    fatto
+      ? en ? `✓ ${nome} installed` : `✓ ${nome} installato`
+      : en ? `${nome} was not installed: try again, or run in a terminal: ${comando}` : `${nome} non risulta installato: riprova, oppure esegui in un terminale: ${comando}`,
+    10000,
+  );
+  return fatto;
 }
 
 // Si scrive a un'AI non collegata (o non installata): si propone di

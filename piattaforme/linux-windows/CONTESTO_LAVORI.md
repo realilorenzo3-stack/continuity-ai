@@ -49,6 +49,7 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
 - [ ] Codex e Claude Code installati e collegati dentro Ubuntu.
 
 ### 2. Windows: il comando `continuity` da PowerShell
+- [x] 30 ottobre, 2.0.0-beta.13: `install.ps1` ripara una distribuzione predefinita inesistente (la causa più probabile di `WSL_E_DISTRO_NOT_FOUND` anche senza `-d`) e non usa più `exit`, che con `irm | iex` chiudeva la finestra. `continuity.cmd` usa la predefinita se la sua distribuzione non risponde. **Da verificare sul PC di Lorenzo.**
 - [ ] Capire il `WSL_E_DISTRO_NOT_FOUND` rimasto. Da guardare:
   - `wsl -l -v`;
   - il contenuto di `%LOCALAPPDATA%\Continuity\bin\continuity.cmd`;

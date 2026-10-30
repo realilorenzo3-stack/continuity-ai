@@ -434,6 +434,23 @@ if [ -z "${CONTINUITY_SENZA_CODEX:-}" ] && ! command -v codex >/dev/null 2>&1 &&
   fi
 fi
 
+# Claude Code, allo stesso modo (decisione di Lorenzo del 30 ottobre: «la
+# stessa cosa di Codex»): con l'installatore ufficiale di Anthropic, in
+# ~/.local/bin, senza sudo. Per usarlo serve il proprio abbonamento Claude o
+# una chiave: il login lo fa la persona, nel programma ufficiale (/collega).
+# CONTINUITY_SENZA_CLAUDE=1 lo salta (prove).
+if [ -z "${CONTINUITY_SENZA_CLAUDE:-}" ] && ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
+  if command -v bash >/dev/null 2>&1; then
+    echo
+    echo 'Installo Claude Code (programma ufficiale di Anthropic): per usarlo serve il tuo abbonamento Claude'
+    if curl -fsSL "${CONTINUITY_CLAUDE_INSTALLER:-https://claude.ai/install.sh}" | bash >"$continuity_data/claude-installazione.log" 2>&1; then
+      echo '  Claude Code installato: collegalo con /collega claude.'
+    else
+      echo "  Claude Code non installato (dettagli in $continuity_data/claude-installazione.log): /collega claude lo riproporrà."
+    fi
+  fi
+fi
+
 # Che cosa manca al sistema, con i comandi esatti per sistemarlo.
 if [ "$(uname -s)" = Linux ]; then
   continuity_pacchetti=

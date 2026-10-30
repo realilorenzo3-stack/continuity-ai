@@ -4,6 +4,13 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.13 — 2026-10-30
+
+- **Claude Code come Codex**: si installa insieme a Continuity, con l'installatore ufficiale di Anthropic. Se manca, `/collega` e la configurazione lo installano da lì («Installalo adesso») e poi aprono il login. Lo stesso per Codex.
+- **Menu dei comandi mentre scrivi**: scrivendo `/` compare sopra il campo l'elenco dei comandi, che si restringe lettera dopo lettera. ↑↓ sceglie, tab completa, invio esegue, esc chiude.
+- **Groq e gli altri piani gratuiti con limiti al minuto**: l'avviso compare una volta per turno e spiega che il servizio lavora a scatti, invece di ripetersi a ogni attesa.
+- **Windows**: l'installatore ripara da solo una distribuzione WSL predefinita che non esiste più (WSL_E_DISTRO_NOT_FOUND) e non chiude più la finestra di PowerShell in caso di problemi. Il comando `continuity` per PowerShell, se la sua distribuzione non risponde, usa quella predefinita.
+
 ## 2.0.0-beta.12 — 2026-10-30
 
 - Installazione e `continuity update` scelgono davvero l'ultima versione. GitHub elenca le versioni per nome («beta.9» prima di «beta.11»), e veniva installata una versione vecchia; ora si confrontano i numeri. Lo stesso vale per l'avviso di versione nuova.

@@ -412,6 +412,7 @@ export function traduci(testo: string | undefined): string | undefined {
     [/^(\d+)\. (.+)$/, "$1. $2"],
     [/^Flusso «(.+)»\. Esc lo lascia in attesa: invio lo riapre\.$/, "Workflow ‘$1’. Esc leaves it waiting; enter opens it again."],
     [/^Tema (chiaro|scuro): vale dalla prossima apertura di Continuity$/, "Theme $1: applies the next time you open Continuity"],
+    [/^(.+): il piano gratuito accetta poche richieste al minuto, quindi lavora a scatti, con pause fra una richiesta e l'altra\. Continuo da solo\.$/, "$1: the free plan accepts few requests per minute, so it works in bursts, with pauses between requests. I'll keep going on my own."],
     [/^(.+): limite al minuto del piano gratuito, aspetto (\d+) s e riprovo$/, "$1: free plan per-minute limit, waiting $2 s and retrying"],
     [/^(.+) non è partito: (.*)$/, "$1 did not start: $2"],
     [/^(.+): il messaggio è troppo lungo per il piano gratuito \(circa ([\d.]+) token; ne accetta circa ([\d.]+) al minuto, risposta compresa\)\. Accorcialo o dividi l'allegato, oppure affida questo lavoro a un'altra AI\.$/, "$1: the message is too long for the free plan (about $2 tokens; it accepts about $3 per minute, reply included). Shorten it or split the attachment, or hand this work to another AI."],

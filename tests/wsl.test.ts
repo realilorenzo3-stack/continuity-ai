@@ -131,7 +131,12 @@ it("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity
   expect(r.stdout.trim()).toBe("C:\\Users\\anna\\AppData\\Local\\Continuity\\bin");
   const cmd = join(disco, "Users/anna/AppData/Local/Continuity/bin/continuity.cmd");
   expect(readFileSync(cmd, "utf8")).toBe(
-    '@echo off\r\nrem Continuity gira in WSL (Ubuntu): questo comando lo avvia nella cartella corrente.\r\nwsl.exe -d "Ubuntu" --cd "%CD%" -- "/home/anna/.local/bin/continuity" %*\r\n',
+    // Se «Ubuntu» non risponde (tolta, rinominata) si usa la distribuzione
+    // predefinita, invece di fermarsi con WSL_E_DISTRO_NOT_FOUND.
+    '@echo off\r\nrem Continuity gira in WSL (Ubuntu): questo comando lo avvia nella cartella corrente.\r\n' +
+      'wsl.exe -d "Ubuntu" -e true >nul 2>&1\r\n' +
+      'if errorlevel 1 (\r\n  wsl.exe --cd "%CD%" -- "/home/anna/.local/bin/continuity" %*\r\n) else (\r\n' +
+      '  wsl.exe -d "Ubuntu" --cd "%CD%" -- "/home/anna/.local/bin/continuity" %*\r\n)\r\n',
   );
   const script = readFileSync(registro, "utf8");
   expect(script).toContain("$d='C:\\Users\\anna\\AppData\\Local\\Continuity\\bin'");
@@ -148,6 +153,7 @@ it("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity
   // Con una cartella dati diversa da quella di serie, la porta con sé.
   esegui("continuity_installa_windows", "/home/anna/.local/bin/continuity", "Debian", "/home/anna/dati prova");
   expect(readFileSync(cmd, "utf8")).toContain('wsl.exe -d "Debian" --cd "%CD%" -- env "CONTINUITY_DATA_DIR=/home/anna/dati prova" "/home/anna/.local/bin/continuity" %*');
+  expect(readFileSync(cmd, "utf8")).toContain('  wsl.exe --cd "%CD%" -- env "CONTINUITY_DATA_DIR=/home/anna/dati prova" "/home/anna/.local/bin/continuity" %*');
 
   // La disinstallazione lo toglie, e toglie la cartella dal PATH.
   const via = esegui("continuity_togli_windows");
@@ -186,3 +192,13 @@ process.stdout.write("2");
   expect(script).toContain("FindAllByResource('Continuity · dati d''anna · 1a2b3c4d')");
   expect(script).not.toContain("RetrievePassword");
 });
+
+it("l'installatore per Windows non chiude mai la finestra di PowerShell e ripara una distribuzione predefinita che non c'è più", () => {
+  const ps = readFileSync("scripts/install.ps1", "utf8");
+  // Con «irm | iex» un «exit» chiuderebbe la finestra della persona.
+  expect(ps).not.toMatch(/^\s*exit\b/m);
+  expect(ps).toContain("$env:WSL_UTF8 = '1'");
+  expect(ps).toContain("& wsl.exe --set-default $scelta");
+  expect(ps).toMatch(/Where-Object \{ \$_ -match '\^Ubuntu' \}/);
+});
+

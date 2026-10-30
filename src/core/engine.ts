@@ -974,10 +974,19 @@ export class Engine {
         },
         // Il limite al minuto: lo si dice nelle sessioni in cui quel
         // servizio sta lavorando.
+        // Una volta per turno, e solo per attese vere: con Groq gratuito
+        // (circa 8.000 token al minuto, una richiesta di lavoro sui file ne
+        // usa 5-7.000) quasi ogni richiesta aspetta, e l'avviso a ogni attesa
+        // sembrava un errore (prova di Lorenzo su Ubuntu, 30 ottobre).
         attesa: (id, secondi) => {
-          for (const runId of this.children.keys())
-            if (this.run(runId).agent === id)
-              this.event(this.run(runId), "provider.waiting", `${nomeServizio(providerNoto(id)!)}: limite al minuto del piano gratuito, aspetto ${secondi} s e riprovo`);
+          if (secondi < 5) return;
+          for (const runId of this.children.keys()) {
+            const r = this.run(runId);
+            const chiave = `${runId}:${r.attemptId ?? ""}:${id}`;
+            if (r.agent !== id || this.attesaGiaDetta.has(chiave)) continue;
+            this.attesaGiaDetta.add(chiave);
+            this.event(r, "provider.waiting", `${nomeServizio(providerNoto(id)!)}: il piano gratuito accetta poche richieste al minuto, quindi lavora a scatti, con pause fra una richiesta e l'altra. Continuo da solo.`);
+          }
         },
         // Un registro locale delle richieste del ponte: numeri e stati, mai
         // chiavi né testi (cartella dati, ponte/registro.log).
@@ -987,6 +996,7 @@ export class Engine {
     await this.ponte.avvia();
     return this.ponte;
   }
+  private attesaGiaDetta = new Set<string>();
   private modelliGratisInMemoria = new Map<string, { quando: number; elenco: ModelloGratuito[] }>();
   // I modelli che un servizio ha detto di non avere per questo account.
   private modelliScartati = new Map<string, Set<string>>();

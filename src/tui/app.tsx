@@ -4,6 +4,7 @@
 // ctrl+p e dialoghi per ogni scelta. Parla con il servizio locale come il
 // terminale a righe (src/cli/session.ts), che resta disponibile con --righe.
 import {
+  createMemo,
   createSignal,
   For,
   onCleanup,
@@ -41,7 +42,7 @@ import { fileFuoriProgetto, scegliDalFinder, soloFileTrascinati } from "./allega
 import { providerNoto } from "../core/provider.js";
 import { Avvisi, Domanda, Scelta, type Avviso, type Voce } from "./dialoghi.js";
 import { coloreAI, tema } from "./tema.js";
-import { eseguiComando, proponiCollegamento, vociMenu, type Contesto } from "./comandi.js";
+import { COMANDI_TUI, eseguiComando, proponiCollegamento, vociMenu, type Contesto } from "./comandi.js";
 import { configurazione, proponiConfigurazione } from "./configura.js";
 import { controllaAggiornamento } from "../core/aggiornamenti.js";
 import { fileURLToPath } from "node:url";
@@ -174,6 +175,12 @@ export function App(props: Opzioni & { onEsci: () => void }) {
   };
   const contenutoCambiato = () => {
     const ora = campo?.plainText ?? "";
+    // Il menu dei comandi sotto il campo segue ciò che si scrive dopo «/».
+    if (ora !== testoCampo()) {
+      setTestoCampo(ora);
+      setSceltaComando(0);
+      setComandiNascosti(false);
+    }
     // Una @ nuova in fondo, mentre si scrive (non cancellando).
     const nuova = ora.length > testoPrima.length && /(^|\s)@$/.test(ora) && !/(^|\s)@$/.test(testoPrima);
     testoPrima = ora;
@@ -210,6 +217,9 @@ export function App(props: Opzioni & { onEsci: () => void }) {
     campo.insertText?.(chiave);
   };
   let campo: any;
+  const [testoCampo, setTestoCampo] = createSignal("");
+  const [sceltaComando, setSceltaComando] = createSignal(0);
+  const [comandiNascosti, setComandiNascosti] = createSignal(false);
   let scorrimento: any;
   let ultimoEsc = 0;
   let ultimoCtrlC = 0;
@@ -720,6 +730,19 @@ export function App(props: Opzioni & { onEsci: () => void }) {
     },
   };
 
+  // I comandi suggeriti mentre si scrive «/…» (richiesta di Lorenzo del 30
+  // ottobre): un piccolo menu sopra il campo, che si restringe lettera dopo
+  // lettera. Si cerca nel nome del comando in tutte e due le lingue
+  // («/conn» trova /collega anche in italiano). ↑↓ sceglie, tab completa,
+  // invio esegue, esc chiude.
+  const comandiSuggeriti = createMemo(() => {
+    const scritto = testoCampo().toLowerCase();
+    if (comandiNascosti() || !/^\/[^\s]*$/.test(scritto)) return [];
+    const voci = vociMenu();
+    return voci
+      .filter((v, i) => String(v.valore).toLowerCase().startsWith(scritto) || COMANDI_TUI[i]?.nome.toLowerCase().startsWith(scritto))
+      .slice(0, 8);
+  });
   const menuComandi = async () => {
     const scelta = await contesto.scegli("Comandi", vociMenu(), { ricerca: true });
     if (scelta) await invia(scelta.valore as string);
@@ -728,6 +751,22 @@ export function App(props: Opzioni & { onEsci: () => void }) {
   useKeyboard((tasto) => {
     if (dialogo()) return;
     if (tasto.ctrl && tasto.name === "p") return void menuComandi();
+    const suggeriti = comandiSuggeriti();
+    if (suggeriti.length) {
+      if (tasto.name === "up" || tasto.name === "down") {
+        setSceltaComando((i) => (i + (tasto.name === "down" ? 1 : -1) + suggeriti.length) % suggeriti.length);
+        return;
+      }
+      if (tasto.name === "tab" && !tasto.shift) {
+        campo?.setText?.(String(suggeriti[Math.min(sceltaComando(), suggeriti.length - 1)].valore) + " ");
+        campo?.gotoBufferEnd?.();
+        return;
+      }
+      if (tasto.name === "escape") {
+        setComandiNascosti(true);
+        return;
+      }
+    }
     // shift+tab: dove va il prossimo messaggio, se l'AI ibrida è a comando.
     if (tasto.name === "tab" && tasto.shift) {
       const conf = ibrida()?.config;
@@ -973,6 +1012,23 @@ export function App(props: Opzioni & { onEsci: () => void }) {
 
   const campoEPiede = () => (
     <>
+      <Show when={comandiSuggeriti().length}>
+        <box flexDirection="column" backgroundColor={tema.pannello} paddingLeft={2} paddingRight={2} flexShrink={0}>
+          <For each={comandiSuggeriti()}>
+            {(v, i) => (
+              <text wrapMode="none" truncate>
+                <span style={{ fg: i() === sceltaComando() ? tema.accento : tema.testo }}>
+                  {(i() === sceltaComando() ? "› " : "  ") + String(v.valore).padEnd(16)}
+                </span>
+                <span style={{ fg: tema.tenue }}>{v.descrizione ?? v.nome}</span>
+              </text>
+            )}
+          </For>
+          <text wrapMode="none" truncate fg={tema.tenue}>
+            {lingua() === "en" ? "↑↓ choose · tab completes · enter runs · esc closes" : "↑↓ scegli · tab completa · invio esegue · esc chiude"}
+          </text>
+        </box>
+      </Show>
       <Campo
         ai={destinatario() !== "sequenza" ? nomeLocale(ibrida()?.config.modello ?? "") : ai()}
         modello={destinatario() !== "sequenza" ? ibrida()?.config.modello : modello()}
@@ -995,6 +1051,15 @@ export function App(props: Opzioni & { onEsci: () => void }) {
         onTogliAllegato={(nome) => void togliAllegato(nome)}
         onPiu={() => void dalFinder()}
         onInvia={() => {
+          // Invio con il menu dei comandi aperto: si esegue il comando scelto,
+          // se quello scritto non è già un comando intero.
+          const suggeriti = comandiSuggeriti();
+          if (suggeriti.length) {
+            const scrittoOra = (campo?.plainText ?? "").trim().toLowerCase();
+            if (!suggeriti.some((v) => String(v.valore).toLowerCase() === scrittoOra))
+              campo?.setText?.(String(suggeriti[Math.min(sceltaComando(), suggeriti.length - 1)].valore));
+          }
+          setComandiNascosti(true);
           const scritto = campo?.plainText ?? "";
           const testo = espandi(scritto);
           incollati.clear();
