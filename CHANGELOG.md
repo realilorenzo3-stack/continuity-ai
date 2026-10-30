@@ -4,6 +4,10 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.6 — 2026-10-30
+
+- L'avviso di versione nuova si controlla a ogni apertura di Continuity (prima una volta al giorno, e una versione uscita da poco poteva non comparire) e resta a schermo 30 secondi.
+
 ## 2.0.0-beta.5 — 2026-10-30
 
 - Linux e Windows: niente più «Mac» nei testi. «Il modello sul tuo computer», «Qwen sul computer», e il tasto giusto per incollare (ctrl+shift+V su Linux e in Windows Terminal, cmd+V sul Mac).

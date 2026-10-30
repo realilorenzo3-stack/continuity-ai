@@ -29,37 +29,38 @@ it("quale versione è più nuova, anteprime comprese", () => {
   expect(piuNuova("v3.0.0", "2.9.9")).toBe(true);
 });
 
-it("l'avviso di versione nuova: una volta al giorno, solo con una versione installata, e si spegne", async () => {
+it("l'avviso di versione nuova: a ogni apertura, solo con una versione installata; senza rete vale l'ultima risposta; si spegne", async () => {
   const dati = temp("agg-dati-");
   const app = temp("agg-app-");
   let chiamate = 0;
+  let pubblicata = "v2.1.0";
   const github = (async () => {
     chiamate++;
-    return new Response(JSON.stringify([{ tag_name: "v2.1.0" }]));
+    return new Response(JSON.stringify([{ tag_name: pubblicata }]));
   }) as any;
   // Versione di sviluppo (nessuna .continuity-version): nessun controllo.
   expect(await controllaAggiornamento(dati, app, github)).toBeUndefined();
   expect(chiamate).toBe(0);
   writeFileSync(join(app, ".continuity-version"), "2.0.0\n");
-  const ora = Date.parse("2026-11-01T10:00:00Z");
-  expect(await controllaAggiornamento(dati, app, github, ora)).toBe("2.1.0");
-  // Lo stesso giorno: dalla memoria, senza chiedere di nuovo a GitHub.
-  expect(await controllaAggiornamento(dati, app, github, ora + 3600_000)).toBe("2.1.0");
-  expect(chiamate).toBe(1);
-  expect(await controllaAggiornamento(dati, app, github, ora + 25 * 3600_000)).toBe("2.1.0");
+  expect(await controllaAggiornamento(dati, app, github)).toBe("2.1.0");
+  // Una versione uscita poco dopo si vede alla prossima apertura (prima la
+  // risposta restava valida per un giorno).
+  pubblicata = "v2.1.1";
+  expect(await controllaAggiornamento(dati, app, github)).toBe("2.1.1");
   expect(chiamate).toBe(2);
-  // Già aggiornato: niente avviso.
-  writeFileSync(join(app, ".continuity-version"), "2.1.0\n");
-  expect(await controllaAggiornamento(dati, app, github, ora + 26 * 3600_000)).toBeUndefined();
-  // Spento dalla persona.
-  writeFileSync(join(app, ".continuity-version"), "2.0.0\n");
-  writeFileSync(join(dati, "interfaccia.json"), JSON.stringify({ aggiornamenti: false }));
-  expect(await controllaAggiornamento(dati, app, github, ora + 60 * 3600_000)).toBeUndefined();
-  // Senza rete: nessun avviso, nessun errore.
+  // Senza rete: l'ultima risposta, senza errori.
   const senzaRete = (async () => {
     throw Error("offline");
   }) as any;
+  expect(await controllaAggiornamento(dati, app, senzaRete)).toBe("2.1.1");
   expect(await controllaAggiornamento(temp("agg-off-"), app, senzaRete)).toBeUndefined();
+  // Già aggiornato: niente avviso.
+  writeFileSync(join(app, ".continuity-version"), "2.1.1\n");
+  expect(await controllaAggiornamento(dati, app, github)).toBeUndefined();
+  // Spento dalla persona.
+  writeFileSync(join(app, ".continuity-version"), "2.0.0\n");
+  writeFileSync(join(dati, "interfaccia.json"), JSON.stringify({ aggiornamenti: false }));
+  expect(await controllaAggiornamento(dati, app, github)).toBeUndefined();
 });
 
 it("il formato dei dati: numero alla prima apertura, copia di sicurezza prima di convertire, stop con dati di una versione più nuova", () => {

@@ -23,8 +23,13 @@ import { exportRun } from "../src/handoff/export.js";
 const dirs: string[] = [];
 const aperti: { engine: Engine; db: Store }[] = [];
 afterEach(async () => {
-  for (const { engine, db } of aperti.splice(0)) {
-    await engine.shutdown().catch(() => {});
+  // Prima si fermano tutti i motori, poi si chiudono i database: due motori
+  // sullo stesso archivio (il servizio che riparte) chiudevano il database
+  // sotto il secondo, che stava ancora scrivendo («database is not open»,
+  // prove su Ubuntu del 30 ottobre).
+  const tutti = aperti.splice(0);
+  for (const { engine } of tutti) await engine.shutdown().catch(() => {});
+  for (const db of new Set(tutti.map((x) => x.db))) {
     try {
       db.close();
     } catch {}

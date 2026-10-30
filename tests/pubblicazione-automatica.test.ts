@@ -28,8 +28,10 @@ import { projectPrompt } from "../src/adapters/live.js";
 const dirs: string[] = [];
 const aperti: { engine: Engine; db: Store }[] = [];
 afterEach(async () => {
-  for (const { engine, db } of aperti.splice(0)) {
-    await engine.shutdown().catch(() => {});
+  // Prima tutti i motori, poi i database (vedi tests/collaudo-2026-10-03.test.ts).
+  const tutti = aperti.splice(0);
+  for (const { engine } of tutti) await engine.shutdown().catch(() => {});
+  for (const db of new Set(tutti.map((x) => x.db))) {
     try {
       db.close();
     } catch {}

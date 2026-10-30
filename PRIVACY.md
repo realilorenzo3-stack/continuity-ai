@@ -7,7 +7,7 @@ Continuity funziona sul tuo computer. **Lorenzo Reali**, l'autore, non riceve il
 - I testi e i file che invii alle AI che hai collegato (Codex, Claude Code, Groq, Google AI Studio, Mistral, NVIDIA, Cloudflare, Cohere…), verso quei fornitori, che li trattano secondo le loro informative. Quando un servizio usa i dati per addestrare i modelli, li fa leggere a persone o è solo di prova, Continuity te lo dice con le parole dei suoi termini quando lo colleghi (`/collega`). Da quel momento, se lo scegli per lavorare, per controllare o come revisore, riceve i messaggi e i file del progetto che servono al suo lavoro, senza una nuova domanda ogni volta. Se non vuoi mandargli il codice, non collegarlo o scollegalo.
 - La verifica delle chiavi, verso il fornitore della chiave.
 - Il catalogo dei modelli scaricato da models.dev, che vede il tuo indirizzo IP.
-- Il controllo delle versioni nuove: al massimo una volta al giorno Continuity chiede a GitHub qual è l'ultima versione pubblicata; GitHub vede il tuo indirizzo IP. Si spegne con `CONTINUITY_AGGIORNAMENTI=spenti` o con `"aggiornamenti": false` nel file `interfaccia.json` della cartella dati.
+- Il controllo delle versioni nuove: a ogni apertura Continuity chiede a GitHub qual è l'ultima versione pubblicata; GitHub vede il tuo indirizzo IP. Si spegne con `CONTINUITY_AGGIORNAMENTI=spenti` o con `"aggiornamenti": false` nel file `interfaccia.json` della cartella dati.
 - L'installazione e `continuity update`, che scaricano Continuity da GitHub, Node da nodejs.org e le dipendenze dal registro npm.
 - Le pubblicazioni su GitHub, fatte con il tuo `gh`.
 

@@ -1,6 +1,8 @@
-// L'avviso di versione nuova (piano di pubblicazione, punto 4): al massimo una
-// volta al giorno Continuity chiede a GitHub qual è l'ultima versione
-// pubblicata e, se è più nuova di quella installata, lo dice in una riga.
+// L'avviso di versione nuova (piano di pubblicazione, punto 4): a ogni
+// apertura Continuity chiede a GitHub qual è l'ultima versione pubblicata e,
+// se è più nuova di quella installata, lo dice in una riga. Prima si chiedeva
+// una volta al giorno: la risposta di ieri nascondeva le versioni di oggi
+// (prova di Lorenzo su Ubuntu, 30 ottobre). Senza rete vale l'ultima risposta.
 // GitHub vede l'indirizzo IP (scritto in PRIVACY.md). Si spegne con
 // CONTINUITY_AGGIORNAMENTI=spenti o con «aggiornamenti: false» in
 // interfaccia.json. Nella versione di sviluppo non c'è .continuity-version:
@@ -10,7 +12,6 @@ import { join } from "node:path";
 import { fileInterfaccia } from "./lingua.js";
 
 export const REPOSITORY_PUBBLICA = "realilorenzo3-stack/continuity-ai";
-const UN_GIORNO = 24 * 60 * 60 * 1000;
 
 export function versioneInstallata(cartellaApp: string): string | undefined {
   try {
@@ -70,20 +71,18 @@ export async function controllaAggiornamento(
     ricordata = JSON.parse(readFileSync(file, "utf8"));
   } catch {}
   let ultima = ricordata.ultima;
-  if (!ricordata.quando || ora - ricordata.quando >= UN_GIORNO) {
-    try {
-      const r = await scarica(`https://api.github.com/repos/${REPOSITORY_PUBBLICA}/releases?per_page=1`, {
-        headers: { accept: "application/vnd.github+json" },
-        signal: AbortSignal.timeout(4000),
-      });
-      const elenco = r.ok ? ((await r.json()) as any[]) : [];
-      const tag = String(elenco?.[0]?.tag_name ?? "").replace(/^v/, "");
-      if (tag) ultima = tag;
-      mkdirSync(cartellaDati, { recursive: true, mode: 0o700 });
-      writeFileSync(file, JSON.stringify({ quando: ora, ultima }) + "\n", { mode: 0o600 });
-    } catch {
-      // Senza rete si riprova la volta dopo: nessun avviso, nessun errore.
-    }
+  try {
+    const r = await scarica(`https://api.github.com/repos/${REPOSITORY_PUBBLICA}/releases?per_page=1`, {
+      headers: { accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(4000),
+    });
+    const elenco = r.ok ? ((await r.json()) as any[]) : [];
+    const tag = String(elenco?.[0]?.tag_name ?? "").replace(/^v/, "");
+    if (tag) ultima = tag;
+    mkdirSync(cartellaDati, { recursive: true, mode: 0o700 });
+    writeFileSync(file, JSON.stringify({ quando: ora, ultima }) + "\n", { mode: 0o600 });
+  } catch {
+    // Senza rete vale l'ultima risposta ricordata: nessun errore.
   }
   return ultima && piuNuova(ultima, installata) ? ultima : undefined;
 }

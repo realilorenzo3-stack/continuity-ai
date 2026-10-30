@@ -858,7 +858,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
     // sottofondo, come nel terminale a righe (punto 11).
     props.api(`/runs/${props.id}/connettori?aggiorna=1`).catch(() => {});
     // Una sessione ripresa a turno in corso: lo si segue.
-    // Una versione nuova pubblicata: una riga, al massimo una volta al giorno.
+    // Una versione nuova pubblicata: un avviso a ogni apertura, che resta 30 secondi.
     void controllaAggiornamento(props.cartellaDati, fileURLToPath(new URL("../..", import.meta.url))).then((nuova) => {
       if (nuova)
         avvisa(
@@ -866,7 +866,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
           lingua() === "en"
             ? `Continuity ${nuova} is available: to update, quit and type continuity update`
             : `È disponibile Continuity ${nuova}: per aggiornare esci e scrivi continuity update`,
-          12000,
+          30000,
         );
     });
     if (props.configura) void configurazione(contesto);

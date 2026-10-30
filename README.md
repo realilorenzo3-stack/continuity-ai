@@ -90,7 +90,7 @@ E ogni giorno, nella cartella di un progetto:
 continuity                  # apre o riprende la sessione
 ```
 
-**Aggiornare:** `continuity update`. Continuity avvisa da solo quando c'è una versione nuova (al massimo una volta al giorno). Il tuo lavoro e le impostazioni restano; un turno in corso non viene interrotto. Se qualcosa non va, `continuity update --indietro` rimette la versione di prima.
+**Aggiornare:** `continuity update`. Continuity avvisa da solo, all'apertura, quando c'è una versione nuova. Il tuo lavoro e le impostazioni restano; un turno in corso non viene interrotto. Se qualcosa non va, `continuity update --indietro` rimette la versione di prima.
 
 **Disinstallare:** `continuity uninstall` toglie il programma; `continuity uninstall --all` anche dati, impostazioni e chiavi salvate, dopo conferma.
 
