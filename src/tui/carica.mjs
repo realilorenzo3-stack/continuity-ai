@@ -4,7 +4,7 @@
 import { registerHooks } from "node:module";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { compilaTui } from "./compila.mjs";
+import { compilaTuiConCache } from "./compila.mjs";
 
 registerHooks({
   load(url, contesto, prossimo) {
@@ -12,7 +12,7 @@ registerHooks({
       const file = fileURLToPath(url);
       return {
         format: "module",
-        source: compilaTui(readFileSync(file, "utf8"), file),
+        source: compilaTuiConCache(readFileSync(file, "utf8"), file),
         shortCircuit: true,
       };
     }

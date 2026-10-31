@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { erroreVersoCodex, richiestaChat, Traduzione } from "../src/ponte/traduttore.js";
-import { Ponte } from "../src/ponte/server.js";
+import { modelloNonDisponibile, Ponte } from "../src/ponte/server.js";
 import { stimaToken } from "../src/ponte/limite.js";
 import { resolveProvider } from "../src/adapters/resolve.js";
 import { argomentiPonte, ambienteProvider, motivoLeggibile, normalizedLiveEvent } from "../src/adapters/live.js";
@@ -291,6 +291,40 @@ it("errori in chiaro: il modello mancante, la richiesta troppo grande per Groq, 
   const daCodex = `unexpected status 400: ${JSON.stringify({ error: { type: "invalid_request_error", message: nonCe } })}`;
   expect(motivoLeggibile("Codex", daCodex)).toBe(nonCe);
   expect(motivoLeggibile("Codex", "boh")).toMatch(/^Codex ha risposto con un errore: boh/);
+});
+
+// Prova di Lorenzo del 31 ottobre: OpenRouter dà alcuni modelli :free solo ai
+// programmi della sua lista. Il testo è quello vero, arrivato da Codex.
+it("un modello OpenRouter riservato ad alcuni programmi: detto in chiaro, segnato come non disponibile, mai «chiave rifiutata»", async () => {
+  const vero =
+    "unexpected status 403 Forbidden: thinkingmachines/inkling:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps, url: https://openrouter.ai/api/v1/responses";
+  const detto = motivoLeggibile("Codex", vero);
+  expect(detto).toBe(
+    "Codex non può usare questo modello («thinkingmachines/inkling:free»): OpenRouter lo dà solo ad alcuni programmi della sua lista, non a Continuity. Scegline un altro con /modello.",
+  );
+  // La frase che fa segnare il modello fra i non disponibili (engine).
+  expect(detto).toMatch(/non può usare questo modello/);
+  // Nel ponte è un modello che non c'è, non una chiave sbagliata.
+  expect(modelloNonDisponibile(403, '{"error":{"message":"x/y:free is only available on agentic harnesses"}}')).toBe(true);
+  expect(modelloNonDisponibile(403, '{"error":{"message":"Forbidden"}}')).toBe(false);
+  // Le domande dirette (revisore, passi): «modello», non «chiave».
+  const { chiediModello, ErroreGratuito } = await import("../src/core/gratuiti.js");
+  const risposta403 = (async () =>
+    new Response('{"error":{"message":"thinkingmachines/inkling:free is only available on agentic harnesses","code":403}}', { status: 403 })) as any;
+  const e = await chiediModello(
+    { provider: providerNoto("openrouter")!, chiave: "sk-or-v1-inventata", modello: "thinkingmachines/inkling:free", messaggi: [{ role: "user", content: "x" }] },
+    risposta403,
+  ).catch((x) => x);
+  expect(e).toBeInstanceOf(ErroreGratuito);
+  expect(e.tipo).toBe("modello");
+  expect(e.message).toMatch(/inkling:free è riservato ad alcuni programmi.*\/modello/);
+  // Un 403 vero di chiave resta «chiave».
+  const chiave403 = (async () => new Response('{"error":{"message":"Forbidden"}}', { status: 403 })) as any;
+  const k = await chiediModello(
+    { provider: providerNoto("openrouter")!, chiave: "sk-or-v1-inventata", modello: "m:free", messaggi: [{ role: "user", content: "x" }] },
+    chiave403,
+  ).catch((x) => x);
+  expect(k.tipo).toBe("chiave");
 });
 
 it("Codex con il ponte: provider del ponte, catalogo, configurazione snella; la chiave vera non è nell'ambiente", () => {

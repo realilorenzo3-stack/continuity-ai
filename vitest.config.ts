@@ -1,5 +1,4 @@
 import { defineConfig } from "vitest/config";
-// @ts-expect-error modulo JavaScript senza tipi
 import { compilaTui } from "./src/tui/compila.mjs";
 
 export default defineConfig({

@@ -426,3 +426,10 @@ export function conAccount(indirizzo: string, chiave?: string) {
 export function chiaveVera(p: ProviderNoto, chiave: string) {
   return p.primaParte ? chiave.split(":").slice(1).join(":") : chiave;
 }
+
+// Alcuni modelli gratuiti OpenRouter li dà solo ai programmi della sua lista
+// (openrouter.ai/apps, «agentic harnesses»), non a una chiamata qualunque:
+// «thinkingmachines/inkling:free is only available on agentic harnesses»
+// (prova di Lorenzo del 31 ottobre). Non è la chiave né la quota: è il
+// modello che non c'è per Continuity, e va scelto un altro.
+export const SOLO_PROGRAMMI_ELENCATI = /only available (?:on|to|in|for) (?:agentic harness|coding agent|select(?:ed)? app|approved app)/i;

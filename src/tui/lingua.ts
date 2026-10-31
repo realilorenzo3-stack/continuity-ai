@@ -418,6 +418,9 @@ export function traduci(testo: string | undefined): string | undefined {
     [/^(.+): il messaggio è troppo lungo per il piano gratuito \(circa ([\d.]+) token; ne accetta circa ([\d.]+) al minuto, risposta compresa\)\. Accorcialo o dividi l'allegato, oppure affida questo lavoro a un'altra AI\.$/, "$1: the message is too long for the free plan (about $2 tokens; it accepts about $3 per minute, reply included). Shorten it or split the attachment, or hand this work to another AI."],
     [/^(.+): chiave rifiutata \(HTTP (\d+)\)\. Ricollegala con \/collega\.$/, "$1: key rejected (HTTP $2). Connect it again with /connect."],
     [/^il servizio ha rifiutato la chiave \(HTTP (\d+)\)$/, "the service rejected the key (HTTP $1)"],
+    // Un modello OpenRouter riservato ad alcuni programmi (31 ottobre).
+    [/^(.+) non può usare questo modello(?: \(«(.+)»\))?: OpenRouter lo dà solo ad alcuni programmi della sua lista, non a Continuity\. Scegline un altro con \/modello\.$/, "$1 can't use this model ‘$2’: OpenRouter only offers it to some apps on its list, not to Continuity. Choose another one with /model."],
+    [/^(.+): il modello (.+) è riservato ad alcuni programmi della lista del servizio, non a Continuity\. Scegline un altro con \/modello$/, "$1: the model $2 is reserved for some apps on the service's list, not for Continuity. Choose another one with /model"],
     [/^servizio raggiungibile; la chiave non è stata verificata \(HTTP (\d+)\)$/, "service reachable; the key was not verified (HTTP $1)"],
     // I problemi rimasti dopo i giri di correzione (src/core/engine.ts, esitoPasso).
     [/^Dopo (\d+) gir[oi] di correzione resta 1 problema: lo passo all'AI con il prossimo messaggio \(puoi scartarlo in \/revisore\)(; il flusso continua)?$/, "After $1 review rounds 1 issue remains: it goes to the AI with your next message (you can discard it in /reviewer)$2"],

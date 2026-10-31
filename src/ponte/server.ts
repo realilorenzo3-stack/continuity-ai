@@ -6,7 +6,7 @@
 // (installation_id, intestazioni x-codex-*). docs/ponte/RICERCA_FASE4.md.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomBytes } from "node:crypto";
-import { chiaveVera, conAccount, providerNoto } from "../core/provider.js";
+import { chiaveVera, conAccount, providerNoto, SOLO_PROGRAMMI_ELENCATI } from "../core/provider.js";
 import { attesaAlMinuto, erroreVersoCodex, motivoPerIlRegistro, richiestaChat, Traduzione, type Variante } from "./traduttore.js";
 import { senzaChiavi } from "../persistence/redact.js";
 import { stimaToken, stringiPerIlLimite } from "./limite.js";
@@ -228,6 +228,7 @@ export function nomeBreve(nome: string) {
 // «Questo modello non c'è per te»: 404, o un errore che parla del modello.
 export function modelloNonDisponibile(stato: number, testo: string) {
   if (stato === 404) return true;
+  if (stato === 403 && SOLO_PROGRAMMI_ELENCATI.test(testo)) return true;
   return (stato === 400 || stato === 403) && /model.{0,40}(not found|does not exist|not available|unknown|not supported|no access)|unknown model|invalid model/i.test(testo);
 }
 

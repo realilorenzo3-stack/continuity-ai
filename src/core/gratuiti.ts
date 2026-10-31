@@ -6,7 +6,7 @@
 //
 // Ogni chiamata usa la chiave della persona, dal Portachiavi: Continuity non
 // ha chiavi sue e non aggira i limiti dei piani gratuiti.
-import { chiaveVera, conAccount, type ProviderNoto } from "./provider.js";
+import { chiaveVera, conAccount, SOLO_PROGRAMMI_ELENCATI, type ProviderNoto } from "./provider.js";
 import type { Catalogo } from "./modelsdev.js";
 import { senzaChiavi } from "../persistence/redact.js";
 
@@ -199,6 +199,8 @@ async function chiedi(
         Number.isFinite(dopo) && dopo > 0 ? dopo : undefined,
       );
     }
+    if (r.status === 403 && SOLO_PROGRAMMI_ELENCATI.test(testo))
+      throw new ErroreGratuito("modello", `${p.nome}: il modello ${opzioni.modello} è riservato ad alcuni programmi della lista del servizio, non a Continuity. Scegline un altro con /modello`);
     if (r.status === 401 || r.status === 403)
       throw new ErroreGratuito("chiave", `${p.nome} ha rifiutato la chiave (HTTP ${r.status}): ricollegala con /collega ${p.id}`);
     if (r.status === 503 || r.status === 529 || /overload|high demand|unavailable/i.test(testo))

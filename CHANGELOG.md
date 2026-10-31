@@ -4,6 +4,11 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.16 — 2026-10-31
+
+- **OpenRouter, modelli riservati ad alcuni programmi.** Alcuni modelli gratuiti (per esempio `thinkingmachines/inkling:free`) OpenRouter li dà solo ai programmi della sua lista. Ora Continuity lo spiega in chiaro, segna il modello come non disponibile e propone `/modello`; prima interrompeva il turno con l'errore grezzo, o parlava di chiave rifiutata.
+- **Apertura più rapida.** L'interfaccia conserva il risultato della sua compilazione e lo riusa alle aperture successive: il menu «/» è pronto prima.
+
 ## 2.0.0-beta.15 — 2026-10-31
 
 - **Spazio su disco.** L'installatore controlla lo spazio libero prima di cominciare: sotto i 400 MB si ferma e lo dice, sotto 1 GB avvisa (Continuity, Codex e Claude Code ne occupano circa 1 GB).

@@ -14,7 +14,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { PROVIDER, type ProviderNoto } from "../core/provider.js";
+import { PROVIDER, SOLO_PROGRAMMI_ELENCATI, type ProviderNoto } from "../core/provider.js";
 import { nonCollegato } from "../core/collegamento.js";
 
 export const TEMPO_MASSIMO_STRUMENTO_MS = 180_000;
@@ -1010,6 +1010,12 @@ export function motivoLeggibile(provider: string, testo: string) {
     } catch {}
     const nomi = PROVIDER.filter((p) => p.diretto).map((p) => p.nome.split(" · ")[0].replace(/\s*\(.*\)\s*$/, "").trim());
     if (nomi.some((n) => frase.startsWith(n + ":"))) return frase.slice(0, 400);
+  }
+  // Il testo contiene «non può usare questo modello»: il motore lo segna fra
+  // i non disponibili (segnaModelloNonDisponibile).
+  if (SOLO_PROGRAMMI_ELENCATI.test(pulito)) {
+    const solo = /([\w.\-/]+(?::[\w-]+)?) is only available/i.exec(pulito)?.[1];
+    return `${provider} non può usare questo modello${solo ? ` («${solo}»)` : ""}: OpenRouter lo dà solo ad alcuni programmi della sua lista, non a Continuity. Scegline un altro con /modello.`;
   }
   const modello =
     /model[^"]*"([^"]+)" (?:is )?not supported|The '([^']+)' model is not supported/i.exec(

@@ -249,3 +249,17 @@ it("Windows: windowsHide diventa di serie, senza togliere le scelte di chi chiam
   expect(conNascosta([cb], false)).toEqual([{ windowsHide: true }, cb]);
   expect(conNascosta([], false)).toEqual([{ windowsHide: true }]);
 });
+
+it.runIf(suWindows)("Windows: la ricerca nel PATH resta valida 30 secondi (where.exe costa circa 100 ms)", async () => {
+  const { cercaNelPath } = await import("../piattaforme/windows/processi.js");
+  const t = 1_000_000_000_000;
+  const prima = cercaNelPath("cmd", t);
+  expect(prima.some((p) => /\\cmd\.exe$/i.test(p))).toBe(true);
+  // Entro 30 secondi la risposta arriva senza where.exe: meno di 20 ms.
+  const inizio = Date.now();
+  expect(cercaNelPath("cmd", t + 29_000)).toEqual(prima);
+  expect(Date.now() - inizio).toBeLessThan(20);
+  // Chi la riceve può cambiarla senza toccare quella conservata.
+  cercaNelPath("cmd", t + 1).push("x");
+  expect(cercaNelPath("cmd", t + 2)).toEqual(prima);
+});

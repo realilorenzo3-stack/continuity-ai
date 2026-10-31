@@ -160,7 +160,7 @@ export function providerCandidates(name: Provider, root: string) {
     ...fromPath(name),
     ...(sistema() === "windows"
       ? // Gli installatori ufficiali per Windows: Codex in
-        // %LOCALAPPDATA%ProgramsOpenAICodexin, Claude Code in ~.localin.
+        // %LOCALAPPDATA%\Programs\OpenAI\Codex\bin, Claude Code in ~\.local\bin.
         name === "codex"
         ? [
             join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "Programs", "OpenAI", "Codex", "bin", "codex.exe"),

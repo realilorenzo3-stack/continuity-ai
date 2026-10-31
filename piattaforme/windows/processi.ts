@@ -137,12 +137,23 @@ export function variabiliDiSistema(ambiente: NodeJS.ProcessEnv): Record<string, 
 // (.exe): gli script .cmd di npm non si avviano senza cmd.exe, che
 // interpreterebbe gli argomenti; Codex e Claude Code per Windows hanno i loro
 // installatori ufficiali, che mettono un .exe.
-export function cercaNelPath(nome: string): string[] {
+// La risposta resta valida 30 secondi: where.exe costa circa 100 ms, e il
+// servizio cercava Codex e Claude a ogni aggiornamento dell'interfaccia (ogni
+// 2 secondi), bloccandosi un quinto del tempo (31 ottobre). Un programma
+// appena installato si trova al più tardi dopo mezzo minuto; quelli nelle
+// cartelle degli installatori ufficiali subito (src/adapters/resolve.ts).
+const trovati = new Map<string, { quando: number; percorsi: string[] }>();
+export function cercaNelPath(nome: string, adesso = Date.now()): string[] {
+  const chiave = nome + "\0" + (process.env.PATH ?? "");
+  const nota = trovati.get(chiave);
+  if (nota && adesso - nota.quando < 30_000) return [...nota.percorsi];
   const r = spawnSync("where.exe", [nome], { encoding: "utf8", timeout: 10_000, windowsHide: true });
-  return String(r.stdout ?? "")
+  const percorsi = String(r.stdout ?? "")
     .split(/\r?\n/)
     .map((riga) => riga.trim())
     .filter((riga) => riga && win32.extname(riga).toLowerCase() === ".exe");
+  trovati.set(chiave, { quando: adesso, percorsi });
+  return [...percorsi];
 }
 
 // Il nome del file di un programma: «codex» diventa «codex.exe».
