@@ -108,21 +108,26 @@ Con WSL Continuity su Windows non è partito nelle prove di Lorenzo (`WSL_E_DIST
 - requisiti e installatori per Windows;
 - `bin\continuity2.cmd`.
 
-Provati davvero sul PC di Lorenzo. Le voci qui sotto restano aperte per ciò che manca.
+Provati davvero sul PC di Lorenzo.
 
-**Che cosa oggi presuppone un sistema Unix** (inventario dal codice, 30 ottobre):
-- [ ] **Processi.** `spawn(..., { detached: true })` e `process.kill(-pid)` per fermare il gruppo (`src/supervisor/process.ts`, `src/core/engine.ts` righe ~451, ~3457, ~4362, `src/core/ibrida.ts`). Su Windows i gruppi non esistono: `taskkill /T /F /PID`. Riconoscimento dei processi (`ps`, `lsof`, `identificaGruppo`, `fermaProcessiNellaCartella`): `Get-CimInstance Win32_Process` o `tasklist`.
-- [ ] **Comandi di sistema.** `esiste()` usa `sh -c 'command -v'` → `where.exe`. Script `.sh` (installatore, disinstallazione, aggiornamento, `nome-chiavi.sh`) → versioni PowerShell per Windows.
-- [ ] **Percorsi.** Confronti con `radice + "/"` (`engine.ts` ~3595, `piattaforme/*/sistema.ts`) e regex con `/` → `path.sep` o `path.relative`. Cartella dati: `%APPDATA%\Continuity` (o `%LOCALAPPDATA%`).
-- [ ] **Chiavi.** `portachiaviWindows` (PasswordVault con PowerShell) esiste già, oggi usato da WSL: su Windows nativo `powershell.exe` c'è sempre.
-- [ ] **Copia di lavoro.** Clonazione: `cp -R --reflink` → `fs.cpSync` (o `robocopy`). Permessi `0o600`/`0o700`: su Windows non valgono, nessun errore.
-- [ ] **Git.** Serve Git per Windows (`winget install Git.Git`): la configurazione lo controlla e dà il comando. Fine riga: `core.autocrlf` come per WSL (`piattaforme/linux-windows/git.ts`).
-- [ ] **Claude Code su Windows nativo:** nessuna sandbox → lavora chiedendo il permesso, o libero con `/permessi` (già fatto). Serve Git Bash (lo installa Git per Windows). Installatore ufficiale: `irm https://claude.ai/install.ps1 | iex`.
-- [ ] **Codex su Windows:** installatore ufficiale `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`; usa la sua sandbox di Windows.
-- [ ] **Interfaccia:** OpenTUI ha i binari `win32-x64`: da provare in Windows Terminal (colori, mouse, tasti, incolla con ctrl+V).
-- [ ] **Appunti e browser:** `clip.exe` / `Get-Clipboard`, `start` (o `explorer.exe`).
-- [ ] **Pacchetto pronto `win32-x64`:** in `scripts/pacchetto.sh` (o un `pacchetto.ps1`) con `node-v…-win-x64.zip`, e un lavoro `windows-latest` in `versione.yml`.
-- [ ] **Prove:** molte prove usano `sh` e percorsi Unix. Aggiungere `windows-latest` a GitHub Actions un pezzo alla volta, cominciando dalle prove del codice comune.
+**Fatto il 31 ottobre** (dettagli in `docs/CONTEXT.md`):
+- [x] processi, comandi di sistema, percorsi, chiavi, copia di lavoro: tutto nella distribuzione `piattaforme/windows/`;
+- [x] Git: `core.longpaths` per le copie profonde; le fine riga restano come sul Mac (`core.autocrlf` provato e tolto: rompeva le consegne dei progetti con file LF);
+- [x] Claude Code: senza sandbox, chiede il permesso per ogni comando (il programma dei permessi ora parte anche su Windows);
+- [x] Codex: la sua sandbox per Windows (`windows.sandbox="unelevated"`), primo turno vero e allegato letto;
+- [x] appunti, browser, finestra «Apri» per gli allegati;
+- [x] pacchetto pronto `win32-x64` (`scripts/pacchetto.sh`, lavoro Windows in `versione.yml`);
+- [x] installatore nativo `scripts/install.ps1` (al posto di quello per WSL), `continuity update` e `continuity uninstall` per Windows;
+- [x] prove:
+  - su Windows 761 passate e 0 fallite;
+  - 49 saltate su Windows, ciascuna con il motivo (permessi Unix, script sh, gruppi di processi Unix);
+  - lavoro `windows` in `prove.yml`, con l'installazione vera del pacchetto.
+
+**Ancora aperto:**
+- [ ] **Interfaccia nel Windows Terminal di Lorenzo:** colori, mouse, tasti, ctrl+V, trascinamento di file, la finestra «Apri».
+- [ ] **Primo rilascio con il pacchetto Windows:** alla prima versione vanno visti il lavoro `pacchetti` di `versione.yml` su Windows e l'installazione con `irm … | iex` dalla pagina pubblica.
+- [ ] **Limite noto:** a fine turno, su Windows non si ritrovano i processi lasciati in sottofondo nella copia (la cartella di lavoro di un processo non si legge senza accesso nativo). I processi dell'AI si fermano con il suo albero (`taskkill /T`).
+- [ ] **Limite noto:** un progetto estratto con le fine riga di Windows (CRLF) risulta tutto modificato alla prima sessione. Funziona, perché quello stato entra nella copia.
 
 ### 6. Prove automatiche e collaudo
 - [ ] GitHub Actions: aggiungere Windows con WSL (per esempio l'azione `Vampire/setup-wsl`), almeno per installazione e comando per PowerShell.

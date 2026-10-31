@@ -136,7 +136,8 @@ for (const conGit of [false, true]) {
     );
   });
 
-  it(`CT-024 · con contenuto già uguale, il permesso della persona arriva anche nella copia (${dove})`, async () => {
+  // Permessi Unix (bit di esecuzione): su Windows non esistono.
+  it.skipIf(process.platform === "win32")(`CT-024 · con contenuto già uguale, il permesso della persona arriva anche nella copia (${dove})`, async () => {
     const s = await sessione({ "a.txt": "BASE\n" }, conGit);
     writeFileSync(join(s.work, "a.txt"), "SAME NEW\n");
     writeFileSync(join(s.project, "a.txt"), "SAME NEW\n");

@@ -136,7 +136,8 @@ export function differenze(lavoro: string, massimo = 24_000): Differenze {
     }
     pezzi.push({ file: nome, testo: blocco });
   }
-  const nuovi = gitIn(lavoro, ["ls-files", "--others", "--exclude-standard"]).split("\n").filter(Boolean);
+  // -z: i nomi con spazi o accenti arrivano come sono, non fra virgolette.
+  const nuovi = gitIn(lavoro, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean);
   for (const f of nuovi) {
     if (f.startsWith("allegati/")) continue;
     if (escluso(lavoro, f)) {

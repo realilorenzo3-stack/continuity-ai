@@ -82,7 +82,8 @@ it("il terminale sostituisce il servizio solo se è più vecchio e fermo", () =>
   expect(vaSostituito(undefined, nuovo, false)).toBe(false);
 });
 
-it("un gruppo di processi terminato risulta fermo, uno vivo no", async () => {
+// Gruppi di processi Unix (sleep, kill -pid); su Windows l'albero si ferma con taskkill (tests/piattaforma.test.ts e prove dal vivo).
+it.skipIf(process.platform === "win32")("un gruppo di processi terminato risulta fermo, uno vivo no", async () => {
   const figlio = spawn("sleep", ["30"], { detached: true, stdio: "ignore" });
   await new Promise((r) => setTimeout(r, 100));
   expect(fermo(figlio.pid!)).toBe(false);

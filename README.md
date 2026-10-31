@@ -70,13 +70,13 @@ Su **macOS** e **Linux** (e dentro WSL), nel terminale:
 curl -fsSL https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.sh | sh
 ```
 
-Su **Windows**, in PowerShell (Continuity gira in WSL 2, che il comando aiuta ad attivare se manca):
+Su **Windows** 10 e 11, in PowerShell (senza WSL e senza amministratore):
 
 ```powershell
 irm https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.ps1 | iex
 ```
 
-Serve git. L'installatore scarica l'ultima versione pubblicata, già pronta per il tuo sistema (macOS Apple Silicon e Intel, Linux x64 e ARM): Node incluso, niente da compilare. Ne controlla l'impronta (SHA-256), la estrae in pochi secondi e crea il comando `continuity`. Installa anche Codex (gratuito, senza abbonamento), che serve ai servizi gratuiti. Non chiede sudo né permessi di amministratore. Su Windows crea anche il comando `continuity` per PowerShell, che apre Continuity in WSL nella cartella in cui ti trovi.
+Serve git. L'installatore scarica l'ultima versione pubblicata, già pronta per il tuo sistema (macOS Apple Silicon e Intel, Linux x64 e ARM, Windows x64): Node incluso, niente da compilare. Ne controlla l'impronta (SHA-256), la estrae in pochi secondi e crea il comando `continuity`. Installa anche Codex (gratuito, senza abbonamento), che serve ai servizi gratuiti. Non chiede sudo né permessi di amministratore. Su Windows il programma va in `%LOCALAPPDATA%\Continuity` e il comando `continuity` funziona in PowerShell, nel Prompt dei comandi e in Windows Terminal (in una finestra nuova); serve Git per Windows (`winget install Git.Git`).
 
 Poi, una volta:
 
@@ -113,11 +113,11 @@ Node 26.4 o più recente (toolchain della 2.0: Node 26.10.0), pnpm 10.17.1. Per 
 - `src/adapters`: lancio e lettura dei CLI dei provider. `src/supervisor`: processi.
 - `src/persistence`: SQLite e redazione. `src/git`: fotografie e ripristino. `src/handoff`: pacchetto di passaggio (RHP).
 - `src/cli`: terminale. `src/server`: servizio locale. `src/ui`: pannello web.
-- `piattaforme/macos` e `piattaforme/linux-windows`: ciò che cambia fra i sistemi (chiavi, cartelle, appunti, browser, processi, WSL). Tutto il resto è comune: una modifica vale per Mac, Linux e Windows. Regole in [piattaforme/LEGGIMI.md](piattaforme/LEGGIMI.md).
+- `piattaforme/macos`, `piattaforme/linux-windows` e `piattaforme/windows`: ciò che cambia fra i sistemi (chiavi, cartelle, appunti, browser, processi, installazione). Tutto il resto è comune: una modifica vale per Mac, Linux e Windows. Regole in [piattaforme/LEGGIMI.md](piattaforme/LEGGIMI.md).
 
 ## Limiti noti
 
-- Linux e Windows (WSL 2) sono in anteprima: lavori aperti in [piattaforme/linux-windows/CONTESTO_LAVORI.md](piattaforme/linux-windows/CONTESTO_LAVORI.md).
+- Linux e Windows sono in anteprima (Windows senza WSL dal 31 ottobre 2026; su Windows Claude Code non ha sandbox e chiede il permesso per ogni comando): lavori aperti in [piattaforme/linux-windows/CONTESTO_LAVORI.md](piattaforme/linux-windows/CONTESTO_LAVORI.md).
 - Non provato: esaurimento dentro un sotto-agente, pilot statistico, macchina vergine, progetti molto grandi, dipendenze su un disco diverso (senza clonazione APFS), interruzione a metà dell'apertura di una sessione.
 - Dentro la sandbox le AI non possono avviare un browser (Chromium e WebKit si chiudono): le verifiche nel browser le esegue Continuity, che passa all'AI le ultime righe degli esiti falliti.
 - Le skill del progetto (`.claude/skills`) non vengono caricate per Claude, per sicurezza; agenti e istruzioni del progetto sì.

@@ -26,7 +26,8 @@ function codexFinto(catalogo: unknown) {
   return f;
 }
 
-it("il catalogo di Codex dà i modelli visibili, nell'ordine di Codex, con i livelli", () => {
+// Il Codex finto è uno script sh: su Windows non parte (CLI solo .exe).
+it.skipIf(process.platform === "win32")("il catalogo di Codex dà i modelli visibili, nell'ordine di Codex, con i livelli", () => {
   const f = codexFinto({
     models: [
       {

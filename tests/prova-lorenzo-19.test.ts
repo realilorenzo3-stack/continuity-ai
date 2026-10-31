@@ -186,7 +186,8 @@ it("Ollama entra nella sequenza come le altre AI («claude, ollama», anche «qw
   }
 }, 30000);
 
-it("un gruppo di processi che rifiuta il segnale (EPERM) si ferma processo per processo", async () => {
+// Gruppi di processi e segnali Unix.
+it.skipIf(process.platform === "win32")("un gruppo di processi che rifiuta il segnale (EPERM) si ferma processo per processo", async () => {
   const { spawn } = await import("node:child_process");
   const { stop, processiNelGruppo } = await import("../src/supervisor/process.js");
   const figlio = spawn("/bin/sh", ["-c", "sleep 30 & sleep 30 & wait"], { detached: true, stdio: "ignore" });

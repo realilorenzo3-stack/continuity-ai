@@ -73,7 +73,8 @@ it("la pubblicazione di una cartella di Windows usa le fine riga di Git per Wind
   expect(autocrlfPerCartella("/mnt/c/Users/anna/sito", "linux", chiedi)).toBeUndefined();
 });
 
-it("un file che non si può scrivere (aperto in un programma di Windows, protetto): la consegna lo dice con il suo nome", () => {
+// Un file reso non scrivibile con chmod: su Windows chmod non vale per le cartelle.
+it.skipIf(process.platform === "win32")("un file che non si può scrivere (aperto in un programma di Windows, protetto): la consegna lo dice con il suo nome", () => {
   if (process.getuid?.() === 0) return; // da amministratore i permessi non fermano
   const radice = temp("wsl-bloccato-");
   mkdirSync(join(radice, "dentro"));
@@ -124,7 +125,8 @@ require("fs").appendFileSync(${JSON.stringify(registro)}, Buffer.from(a[a.indexO
   return { disco, registro, esegui };
 }
 
-it("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity in WSL nella cartella corrente, aggiunto al PATH dell'utente", () => {
+// Il comando per WSL (sh, cmd.exe finto): si prova da Linux.
+it.skipIf(process.platform === "win32")("il comando continuity per PowerShell: un continuity.cmd che avvia Continuity in WSL nella cartella corrente, aggiunto al PATH dell'utente", () => {
   const { disco, registro, esegui } = windowsFinto();
   const r = esegui("continuity_installa_windows", "/home/anna/.local/bin/continuity", "Ubuntu");
   expect(r.status, r.stderr).toBe(0);
@@ -171,7 +173,8 @@ it("senza Windows raggiungibile (cmd.exe non risponde) il comando non si crea e 
   expect(readFileSync("scripts/install.sh", "utf8")).toContain("da PowerShell usa «wsl continuity»");
 });
 
-it("la disinstallazione in WSL toglie le chiavi dall'archivio di Windows, per nome, senza leggerle", () => {
+// La disinstallazione per WSL (sh, powershell.exe finto): si prova da Linux.
+it.skipIf(process.platform === "win32")("la disinstallazione in WSL toglie le chiavi dall'archivio di Windows, per nome, senza leggerle", () => {
   const { registro } = windowsFinto();
   const bin = join(registro, "..", "bin");
   // Il powershell.exe finto risponde quante voci ha tolto.
@@ -193,12 +196,6 @@ process.stdout.write("2");
   expect(script).not.toContain("RetrievePassword");
 });
 
-it("l'installatore per Windows non chiude mai la finestra di PowerShell e ripara una distribuzione predefinita che non c'è più", () => {
-  const ps = readFileSync("scripts/install.ps1", "utf8");
-  // Con «irm | iex» un «exit» chiuderebbe la finestra della persona.
-  expect(ps).not.toMatch(/^\s*exit\b/m);
-  expect(ps).toContain("$env:WSL_UTF8 = '1'");
-  expect(ps).toContain("& wsl.exe --set-default $scelta");
-  expect(ps).toMatch(/Where-Object \{ \$_ -match '\^Ubuntu' \}/);
-});
+// L'installatore per Windows non passa più da WSL (31 ottobre): le sue prove
+// sono in tests/install-windows.test.ts.
 

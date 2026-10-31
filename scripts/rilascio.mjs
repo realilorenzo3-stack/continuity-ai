@@ -14,7 +14,7 @@
 // Opzioni: --prova <cartella> fa tutto in locale, senza commit né invii: la
 // copia pubblica finisce nella cartella indicata. --senza-prove salta il
 // punto 2 (solo con --prova).
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -69,7 +69,12 @@ if (!senzaProve) {
   ]) {
     passo(nome);
     try {
-      execFileSync("pnpm", comando, { cwd: radice, stdio: ["ignore", "ignore", "inherit"] });
+      // Su Windows pnpm è un pnpm.cmd, che si avvia solo attraverso la shell
+      // (31 ottobre, primo rilascio dal PC Windows): una riga sola, fatta di
+      // parole fisse di questo script.
+      if (process.platform === "win32")
+        execSync(["pnpm", ...comando].join(" "), { cwd: radice, stdio: ["ignore", "ignore", "inherit"] });
+      else execFileSync("pnpm", comando, { cwd: radice, stdio: ["ignore", "ignore", "inherit"] });
     } catch {
       esci(`Rilascio fermato: ${nome} non riuscit${nome === "compilazione" ? "a" : "e"}.`);
     }
@@ -88,7 +93,8 @@ if (!prova) {
     try {
       id = gh(["run", "list", "--workflow", "prove.yml", "--commit", commit, "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId"]);
     } catch {}
-    if (!id) execFileSync("sleep", ["5"]);
+    // Cinque secondi di pausa, senza «sleep» (su Windows non c'è).
+    if (!id) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000);
   }
   if (!id) esci("Non trovo le prove su Ubuntu per questo commit: manda prima il commit su GitHub (git push) e riprova.");
   passo("prove su Ubuntu (GitHub Actions)");

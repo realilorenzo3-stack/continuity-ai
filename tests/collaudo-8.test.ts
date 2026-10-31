@@ -153,7 +153,8 @@ rm "$f"
   return { base, casa, aggiungiVoce, voceC, nomeShell, disinstalla };
 }
 
-it("CT-2.0-702: scripts/nome-chiavi.sh e il programma danno lo stesso nome, anche con alias, «..», barre finali e cartelle che non esistono più", () => {
+// scripts/nome-chiavi.sh è del disinstallatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("CT-2.0-702: scripts/nome-chiavi.sh e il programma danno lo stesso nome, anche con alias, «..», barre finali e cartelle che non esistono più", () => {
   const { base, casa, nomeShell } = ambienteFinto();
   const vera = join(base, "dati vèri");
   mkdirSync(vera);
@@ -176,7 +177,8 @@ it("CT-2.0-702: scripts/nome-chiavi.sh e il programma danno lo stesso nome, anch
   if (process.platform === "darwin") expect(servizioPortachiavi("/tmp/c8-x/dati", casa)).toBe(servizioPortachiavi("/private/tmp/c8-x/dati", casa));
 });
 
-it("CT-2.0-605: uninstall --all chiede prima; con una risposta diversa da ELIMINA non tocca niente; con ELIMINA toglie dati e chiavi, anche di una cartella già cancellata", () => {
+// Il disinstallatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("CT-2.0-605: uninstall --all chiede prima; con una risposta diversa da ELIMINA non tocca niente; con ELIMINA toglie dati e chiavi, anche di una cartella già cancellata", () => {
   const { base, casa, aggiungiVoce, voceC, disinstalla } = ambienteFinto();
   const dati = join(base, "dati");
   mkdirSync(join(dati, "app"), { recursive: true });
@@ -209,7 +211,8 @@ it("CT-2.0-605: uninstall --all chiede prima; con una risposta diversa da ELIMIN
   expect(voceC(servizioPortachiavi(sparita, casa))).toBe(false);
 });
 
-it("CT-2.0-605: uninstall --all non accetta la cartella di casa come cartella dati", () => {
+// Il disinstallatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("CT-2.0-605: uninstall --all non accetta la cartella di casa come cartella dati", () => {
   const { casa, disinstalla } = ambienteFinto();
   const r = disinstalla(casa, "ELIMINA");
   expect(r.status).toBe(2);
@@ -217,7 +220,8 @@ it("CT-2.0-605: uninstall --all non accetta la cartella di casa come cartella da
   expect(existsSync(casa)).toBe(true);
 });
 
-it("CT-2.0-703: l'installatore, eseguito davvero, compila la copia installata; se la compilazione fallisce mostra perché e tiene la versione di prima", () => {
+// L'installatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("CT-2.0-703: l'installatore, eseguito davvero, compila la copia installata; se la compilazione fallisce mostra perché e tiene la versione di prima", () => {
   const base = temp("c8-install-");
   const dati = join(base, "dati");
   const lanciatori = join(base, "bin");

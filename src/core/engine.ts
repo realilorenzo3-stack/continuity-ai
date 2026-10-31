@@ -662,8 +662,10 @@ export class Engine {
             input: patch,
             env: ambienteGit(work),
           });
-        for (const file of git(["ls-files", "--others", "--exclude-standard"])
-          .split("\n")
+        // -z: senza, Git cita i nomi con accenti («"citt\303\240.md"») e la
+        // copia non nasceva (collaudo su Windows del 31 ottobre).
+        for (const file of git(["ls-files", "--others", "--exclude-standard", "-z"])
+          .split("\0")
           .filter(Boolean)) {
           mkdirSync(dirname(join(work, file)), { recursive: true });
           copyFileSync(join(repo, file), join(work, file));

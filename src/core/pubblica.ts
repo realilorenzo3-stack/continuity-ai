@@ -74,7 +74,8 @@ function messaggioDi(e: unknown) {
 // «Continuity_website», «utente/repo», un indirizzo https o ssh.
 export function risolviDestinazione(testo: string): string {
   const t = testo.trim();
-  if (/^(https:\/\/|git@|ssh:\/\/|file:\/\/|\/)/.test(t)) return t;
+  // Anche un repository sul disco di Windows («C:\…\sito.git»).
+  if (/^(https:\/\/|git@|ssh:\/\/|file:\/\/|\/)/.test(t) || /^[A-Za-z]:[\\/]/.test(t)) return t;
   if (/^[\w.-]+\/[\w.-]+$/.test(t))
     return `https://github.com/${t.replace(/\.git$/, "")}.git`;
   if (/^[\w.-]+$/.test(t)) {

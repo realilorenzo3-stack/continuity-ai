@@ -61,6 +61,10 @@ jobs:
             piattaforma: darwin-arm64
           - sistema: macos-15-intel
             piattaforma: darwin-x64
+          # Windows nativo (31 ottobre): node.exe nel pacchetto, una
+          # node_modules piatta; lo script gira in Git Bash.
+          - sistema: windows-2025
+            piattaforma: win32-x64
     runs-on: ${{ matrix.sistema }}
     timeout-minutes: 30
     steps:
@@ -75,6 +79,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vite build
       - name: Pacchetto pronto
+        shell: bash
         run: sh scripts/pacchetto.sh "${GITHUB_REF_NAME#v}" "${{ matrix.piattaforma }}" pacchetti
       - uses: actions/upload-artifact@v7
         with:

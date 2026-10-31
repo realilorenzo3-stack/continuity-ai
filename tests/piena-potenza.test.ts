@@ -116,8 +116,9 @@ it("le prove dimostrative restano isolate come prima", () => {
 
 it("le cache dei pacchetti puntano dentro la cartella di Continuity", () => {
   const env = ambienteCache("/dati/cache");
-  expect(env.npm_config_cache).toBe("/dati/cache/npm");
-  expect(env.PIP_CACHE_DIR).toBe("/dati/cache/pip");
+  // Con il separatore del sistema (su Windows «\»).
+  expect(env.npm_config_cache).toBe(join("/dati/cache", "npm"));
+  expect(env.PIP_CACHE_DIR).toBe(join("/dati/cache", "pip"));
   expect(env.CARGO_HOME).toBeUndefined();
   // Una variabile che npm non conosce produce un avviso a ogni comando.
   expect(env.npm_config_store_dir).toBeUndefined();

@@ -124,7 +124,8 @@ for (const conGit of [true, false])
     }
   }, 40000);
 
-it("a fine turno si ferma un processo lasciato in background nella copia, e solo quello", async () => {
+// Limite noto su Windows: la cartella di lavoro di un processo non si legge (processiConCartellaIn); i processi dell'AI si fermano con il suo albero.
+it.skipIf(process.platform === "win32")("a fine turno si ferma un processo lasciato in background nella copia, e solo quello", async () => {
   const { fermaProcessiNellaCartella } = await import(
     "../src/supervisor/process.js"
   );
@@ -178,7 +179,8 @@ it("a fine turno si ferma un processo lasciato in background nella copia, e solo
   }
 }, 30000);
 
-it("dopo un riavvio un processo con lo stesso numero ma nato in un altro momento non è nostro", async () => {
+// Data di nascita letta con ps: su Windows con Win32_Process, provato dal vivo.
+it.skipIf(process.platform === "win32")("dopo un riavvio un processo con lo stesso numero ma nato in un altro momento non è nostro", async () => {
   const { identificaGruppo } = await import("../src/supervisor/process.js");
   const { spawn } = await import("node:child_process");
   const p = spawn("sleep", ["30"], { detached: true, stdio: "ignore" });

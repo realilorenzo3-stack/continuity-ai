@@ -4,7 +4,7 @@ import { portachiaviDiSistema } from "../core/portachiavi.js";
 import { dollari } from "../core/modelsdev.js";
 import { collega } from "./collega.js";
 import { inSilenzio, uscitaLettore } from "./muto.js";
-import { join as unisci } from "node:path";
+import { isAbsolute, join as unisci } from "node:path";
 
 // La cartella dati del servizio, come la calcola il comando «continuity».
 function cartellaDati() {
@@ -155,8 +155,9 @@ export function comandoSenzaBarra(testo: string) {
     const noti = Object.values(MODELLI_NOTI).flat() as string[];
     return noti.includes(argomento.trim()) ? comando : testo;
   }
-  const percorso = argomento.trim().replace(/^~(?=\/|$)/, homedir());
-  return /^[~/.]/.test(argomento.trim()) && existsSync(percorso)
+  // Anche i percorsi di Windows («C:\…», «~\…»): prima solo quelli con «/».
+  const percorso = argomento.trim().replace(/^~(?=[\\/]|$)/, homedir());
+  return (/^[~/.]/.test(argomento.trim()) || isAbsolute(percorso)) && existsSync(percorso)
     ? comando
     : testo;
 }

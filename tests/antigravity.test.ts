@@ -127,7 +127,8 @@ it("indica al successore il percorso assoluto e vieta i dati interni di Continui
     { goal: "carrello" },
     "/tmp/continuity fixture/worktree",
   );
-  expect(prompt).toContain("/tmp/continuity fixture/worktree/cart.mjs");
+  // Con il separatore del sistema (su Windows «\»).
+  expect(prompt).toContain(join("/tmp/continuity fixture/worktree", "cart.mjs"));
   expect(prompt).toContain("non cercare cart.mjs altrove");
   expect(prompt).toContain("snapshots/");
   expect(livePrompt("codex", undefined, "/tmp/continuity fixture/worktree")).not.toContain(

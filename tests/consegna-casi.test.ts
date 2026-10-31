@@ -155,7 +155,8 @@ for (const conGit of [false, true]) {
     expect(s.engine.changedFiles(s.engine.run(s.id))).toContain("b.txt");
   });
 
-  it(`un cambio del solo permesso di esecuzione arriva (${dove})`, async () => {
+  // Permessi Unix (bit di esecuzione): su Windows non esistono.
+  it.skipIf(process.platform === "win32")(`un cambio del solo permesso di esecuzione arriva (${dove})`, async () => {
     const s = await sessione({ "run.sh": "#!/bin/sh\necho ok\n" }, conGit);
     chmodSync(join(s.work, "run.sh"), 0o755);
     s.engine.applyToProject(s.id);
@@ -229,7 +230,8 @@ it("una sessione si apre anche con una modifica binaria non salvata, e non sporc
 for (const conGit of [false, true]) {
   const dove = conGit ? "con Git" : "senza Git";
 
-  it(`la consegna conserva i permessi privati della persona (${dove})`, async () => {
+  // Permessi Unix (600): su Windows non esistono.
+  it.skipIf(process.platform === "win32")(`la consegna conserva i permessi privati della persona (${dove})`, async () => {
     const s = await sessione({ "segreto.txt": "v1\n" }, conGit);
     chmodSync(join(s.project, "segreto.txt"), 0o600);
     writeFileSync(join(s.work, "segreto.txt"), "v2\n");
@@ -238,7 +240,8 @@ for (const conGit of [false, true]) {
     expect(statSync(join(s.project, "segreto.txt")).mode & 0o777).toBe(0o600);
   });
 
-  it(`una cartella illeggibile ferma la consegna invece di perdere i file della persona (${dove})`, async () => {
+  // Una cartella resa illeggibile con chmod: su Windows chmod non toglie la lettura.
+  it.skipIf(process.platform === "win32")(`una cartella illeggibile ferma la consegna invece di perdere i file della persona (${dove})`, async () => {
     const s = await sessione({ "x/a.txt": "A\n" }, conGit);
     // La persona aggiunge file e una cartella che non si può leggere.
     writeFileSync(join(s.project, "x", "mio.txt"), "MIO\n");

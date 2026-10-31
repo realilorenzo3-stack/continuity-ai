@@ -4,6 +4,18 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.18 — 2026-10-31
+
+- **Windows senza WSL.** Da PowerShell, `irm https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.ps1 | iex` installa Continuity direttamente su Windows, con il pacchetto pronto per Windows, in pochi secondi. Il programma porta il suo Node, quindi non serve installarlo. Non serve l'amministratore. Mette il comando `continuity` nel PATH e installa Codex e Claude Code se mancano. Funzionano anche `continuity update` (con `--indietro`) e `continuity uninstall` (con `--all`). WSL non serve più.
+  - **Su Windows:**
+    - Codex lavora nella sua sandbox per Windows: può scrivere nella cartella di lavoro e non nel resto del disco.
+    - Claude Code chiede il permesso per ogni comando, perché su Windows non ha la sandbox, oppure lavora libero con `/permessi`.
+    - Le chiavi stanno nell'archivio credenziali di Windows.
+    - `/allega` apre la finestra «Apri» di Windows.
+    - I progetti con percorsi molto lunghi funzionano.
+- **Nomi di file con accenti:** una sessione si apre anche con file nuovi come `città.md` non ancora registrati in Git (prima Git li citava fra virgolette e la copia di lavoro non nasceva).
+- Arrivati già con la 2.0.0-beta.17, senza essere nelle sue note: l'avviso quando la prima AI della sequenza ha finito i crediti, `/esci` che chiude subito, il permesso dato che compare come «✓ … consentito da te», l'allegato che non compare più fra le modifiche, i connettori subito disponibili dopo un riavvio del servizio.
+
 ## 2.0.0-beta.17 — 2026-10-31
 
 - **Azioni bloccate di Codex: sempre un modo per consentirle.** Quando Codex non può usare un'app o un connettore senza permesso (per esempio un deploy su Vercel), a fine turno Continuity chiede se consentirlo. Se la domanda non compare, `/permessi` offre «Consenti le azioni bloccate, per il prossimo turno», e l'avviso lo dice. Prima poteva restare solo l'avviso, senza modo di rispondere.

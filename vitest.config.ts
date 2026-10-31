@@ -27,6 +27,7 @@ export default defineConfig({
     env: { CONTINUITY_IBRIDA: "spenta", CONTINUITY_OLLAMA_URL: "http://127.0.0.1:9", CONTINUITY_LINGUA: process.env.CONTINUITY_LINGUA ?? "it", CONTINUITY_SENZA_CODEX: "1", CONTINUITY_SENZA_CLAUDE: "1" },
     fileParallelism: false,
     // CLI finte per la versione, solo dove Codex e Claude Code non ci sono.
-    setupFiles: ["tests/cli-finte.ts"],
+    // Su Windows la pulizia delle cartelle temporanee tollera i file aperti.
+    setupFiles: ["tests/cli-finte.ts", "tests/pulizia-windows.ts"],
   },
 });

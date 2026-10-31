@@ -140,7 +140,8 @@ for (const conGit of [false, true]) {
     );
   });
 
-  it(`CT-018 · un permesso di esecuzione messo dalla persona sopravvive alla consegna (${dove})`, async () => {
+  // Permessi Unix (bit di esecuzione): su Windows non esistono.
+  it.skipIf(process.platform === "win32")(`CT-018 · un permesso di esecuzione messo dalla persona sopravvive alla consegna (${dove})`, async () => {
     const s = await sessione({ "a.txt": "BASE\n" }, conGit);
     chmodSync(join(s.project, "a.txt"), 0o755);
     writeFileSync(join(s.work, "a.txt"), "AI CONTENT\n");
@@ -150,7 +151,8 @@ for (const conGit of [false, true]) {
     expect(esegue(join(s.work, "a.txt"))).toBe(true);
   });
 
-  it(`CT-018 · /annulla non toglie un permesso messo dopo la consegna (${dove})`, async () => {
+  // Permessi Unix (bit di esecuzione): su Windows non esistono.
+  it.skipIf(process.platform === "win32")(`CT-018 · /annulla non toglie un permesso messo dopo la consegna (${dove})`, async () => {
     const s = await sessione({ "a.txt": "BASE\n" }, conGit);
     writeFileSync(join(s.work, "a.txt"), "AI\n");
     s.engine.applyToProject(s.id);
@@ -192,7 +194,8 @@ for (const conGit of [false, true]) {
 // CT-015: il disinstallatore, senza indicazioni, trova da solo dove
 // l'installatore ha messo il comando. Tutto in cartelle temporanee: il comando
 // reale non viene mai toccato.
-it("CT-015 · il disinstallatore senza override usa la cartella registrata dall'installatore", () => {
+// Il disinstallatore per Mac e Linux (sh): su Windows c'è piattaforme/windows/disinstalla.ps1.
+it.skipIf(process.platform === "win32")("CT-015 · il disinstallatore senza override usa la cartella registrata dall'installatore", () => {
   const base = mkdtempSync(join(tmpdir(), "continuity-disinstalla-"));
   dirs.push(base);
   const dati = join(base, "dati");

@@ -23,7 +23,7 @@ it("ogni file adattato da opencode ha l'intestazione completa ed è negli avvisi
     expect(testa, f).toMatch(/^\/\/ Pacchetto: \S+ +File: \S+ +Versione: \S+$/m);
     expect(testa, f).toContain("// Licenza originale: MIT, Copyright (c) 2025 opencode");
     expect(testa, f).toMatch(/^\/\/ Modifiche: .{10,}$/m);
-    expect(avvisi, f).toContain(f.split("/").pop()!);
+    expect(avvisi, f).toContain(f.split(/[\\/]/).pop()!);
   }
   // Chi dice di aver ripreso codice da opencode deve avere l'intestazione.
   const senza = sorgenti.filter((f) => {

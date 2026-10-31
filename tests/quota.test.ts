@@ -95,7 +95,8 @@ it("i permessi di Claude coprono il percorso assoluto indicato nel prompt", asyn
   const command = liveCommand("claude", "/tmp/continuity fixture/worktree");
   const allowed =
     command.args[command.args.indexOf("--allowedTools") + 1].split(",");
-  expect(allowed).toContain("Edit(/tmp/continuity fixture/worktree/cart.mjs)");
+  // Con il separatore del sistema (su Windows «\»).
+  expect(allowed).toContain(`Edit(${join("/tmp/continuity fixture/worktree", "cart.mjs")})`);
   expect(allowed).toContain("Edit(./cart.mjs)");
   expect(allowed.every((rule) => rule.includes("cart.mjs"))).toBe(true);
   expect(command.args).not.toContain("bypassPermissions");

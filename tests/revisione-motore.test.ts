@@ -56,7 +56,8 @@ async function sessione() {
 it("ciò che lo stream salva durante l'arresto non viene cancellato dalla pausa", async () => {
   const { db, engine, id } = await sessione();
   try {
-    const figlio = spawn("sleep", ["30"], { detached: true, stdio: "ignore" });
+    // Node invece di sleep: c'è su ogni sistema, anche su Windows.
+    const figlio = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { detached: true, stdio: "ignore" });
     const r = engine.run(id);
     r.state = "STARTING";
     db.save(r, "prova", "avvio");
@@ -129,7 +130,8 @@ it("due avvii insieme: uno solo parte; un turno manuale cancella la richiesta in
 }, 40000);
 
 for (const conGit of [false, true])
-  it(`una configurazione Git scritta dall'AI nella copia non viene eseguita da Continuity (${conGit ? "repository" : "senza Git"})`, async () => {
+  // La prova usa cp e uno script sh come «programma» di Git.
+  it.skipIf(process.platform === "win32")(`una configurazione Git scritta dall'AI nella copia non viene eseguita da Continuity (${conGit ? "repository" : "senza Git"})`, async () => {
     const root = mkdtempSync(join(tmpdir(), "continuity-fsmon-"));
     const data = mkdtempSync(join(tmpdir(), "continuity-dati-"));
     const fuori = mkdtempSync(join(tmpdir(), "continuity-fuori-"));

@@ -132,7 +132,8 @@ it("CT-2.0-303: un flusso rimasto a metà da un servizio caduto si chiude all'av
 it("CT-2.0-401: servizio caduto mentre un'AI lavora in un flusso: al riavvio il processo rimasto si ferma e la sessione accetta messaggi", async () => {
   const { spawn } = await import("node:child_process");
   const { engine, store, run } = await sessione();
-  const orfano = spawn("sleep", ["60"], { detached: true, stdio: "ignore" });
+  // Node invece di sleep: c'è su ogni sistema, anche su Windows.
+  const orfano = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { detached: true, stdio: "ignore" });
   orfano.unref();
   const vivo = () => {
     try {
@@ -156,7 +157,7 @@ it("CT-2.0-401: servizio caduto mentre un'AI lavora in un flusso: al riavvio il 
       uscite: [],
     };
     r.attemptId = "orfano";
-    writeFileSync(join(r.dir, "attempt-orfano.json"), JSON.stringify({ pid: orfano.pid, binary: "/bin/sleep", status: "spawned" }));
+    writeFileSync(join(r.dir, "attempt-orfano.json"), JSON.stringify({ pid: orfano.pid, binary: process.execPath, status: "spawned" }));
     r.pid = orfano.pid;
     r.state = "STARTING";
     engine.event(r, "audit.setup", "avvio");

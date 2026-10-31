@@ -29,7 +29,8 @@ function fakeCli(dir: string, name: string, version: string) {
   return path;
 }
 
-it("sceglie la versione più recente installata, non quella del collaudo né la prima trovata", () => {
+// CLI finte in sh: su Windows Continuity usa solo programmi .exe.
+it.skipIf(process.platform === "win32")("sceglie la versione più recente installata, non quella del collaudo né la prima trovata", () => {
   const bin = temp();
   const vecchia = fakeCli(bin, "claude-old", "2.1.162 (Claude Code)");
   const collaudata = fakeCli(bin, "claude-collaudo", PROVIDER_CONTRACT.claude);
@@ -43,7 +44,8 @@ it("sceglie la versione più recente installata, non quella del collaudo né la 
   expect(pickProvider("codex", [alpha, stabile]).path).toBe(stabile);
 });
 
-it("riporta una versione non collaudata invece di scartarla in silenzio", () => {
+// CLI finte in sh: su Windows Continuity usa solo programmi .exe.
+it.skipIf(process.platform === "win32")("riporta una versione non collaudata invece di scartarla in silenzio", () => {
   const bin = temp();
   const vecchia = fakeCli(bin, "claude-old", "2.1.162 (Claude Code)");
   const scelto = pickProvider("claude", [vecchia]);
@@ -69,7 +71,8 @@ it("ricorda il percorso scelto e lo antepone alla ricerca successiva", () => {
   expect(saved.codex.rememberedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 });
 
-it("un percorso indicato con CONTINUITY_CLAUDE_BIN vale anche se è più vecchio", async () => {
+// CLI finte in sh: su Windows Continuity usa solo programmi .exe.
+it.skipIf(process.platform === "win32")("un percorso indicato con CONTINUITY_CLAUDE_BIN vale anche se è più vecchio", async () => {
   const { resolveProvider } = await import("../src/adapters/resolve.js");
   const root = temp(),
     bin = temp();

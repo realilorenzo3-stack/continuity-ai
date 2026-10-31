@@ -269,7 +269,8 @@ it("CT-002 · un turno fallito non viene presentato come concluso", async () => 
   expect(s.engine.run(s.id).ultimoTurnoFallito).toBe(true);
 });
 
-it("CT-001 · dopo un riavvio non parte un secondo writer finché il primo è vivo", async () => {
+// Gruppi di processi Unix (sleep, kill -pid, ps).
+it.skipIf(process.platform === "win32")("CT-001 · dopo un riavvio non parte un secondo writer finché il primo è vivo", async () => {
   const s = await sessione();
   // Il processo del turno precedente, sopravvissuto al crash del servizio.
   const orfano = spawn("sleep", ["60"], { detached: true, stdio: "ignore" });
@@ -314,7 +315,8 @@ it("CT-001 · dopo un riavvio non parte un secondo writer finché il primo è vi
   }
 }, 30000);
 
-it("CT-001 · un pid finito a un altro programma non viene toccato", async () => {
+// Gruppi di processi Unix (sleep, kill -pid, ps).
+it.skipIf(process.platform === "win32")("CT-001 · un pid finito a un altro programma non viene toccato", async () => {
   const { identificaGruppo } = await import("../src/supervisor/process.js");
   const estraneo = spawn("sleep", ["30"], { detached: true, stdio: "ignore" });
   estraneo.unref();
@@ -333,7 +335,8 @@ it("CT-001 · un pid finito a un altro programma non viene toccato", async () =>
 // Revisione del 4 ottobre (B1): dopo una pausa pulita la ricevuta restava
 // «spawned», e riprendendo giorni dopo si controllava un pid ormai di un
 // altro programma — fermandolo, o bloccando la sessione per sempre.
-it("CT-001 · una ricevuta chiusa o di un turno finito non tocca processi altrui", async () => {
+// Gruppi di processi Unix (sleep, kill -pid, ps).
+it.skipIf(process.platform === "win32")("CT-001 · una ricevuta chiusa o di un turno finito non tocca processi altrui", async () => {
   const s = await sessione();
   const estraneo = spawn("sleep", ["30"], { detached: true, stdio: "ignore" });
   estraneo.unref();
@@ -372,7 +375,8 @@ it("CT-001 · una ricevuta chiusa o di un turno finito non tocca processi altrui
   }
 });
 
-it("CT-001 · un processo di sistema con lo stesso numero non blocca la sessione", async () => {
+// Gruppi di processi Unix (sleep, kill -pid, ps).
+it.skipIf(process.platform === "win32")("CT-001 · un processo di sistema con lo stesso numero non blocca la sessione", async () => {
   const { identificaGruppo } = await import("../src/supervisor/process.js");
   // pid 1 è launchd, di root: prima la risposta EPERM diventava «incerto».
   expect(identificaGruppo(1, "/opt/bin/codex")).toBe("altro");

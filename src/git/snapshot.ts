@@ -63,6 +63,8 @@ function ignoredPaths(root: string) {
           "--ignored",
           "--exclude-standard",
           "--directory",
+          // I nomi come sono: senza -z Git cita quelli con spazi o accenti.
+          "-z",
         ],
         {
           cwd: root,
@@ -71,7 +73,7 @@ function ignoredPaths(root: string) {
           env: ambienteGit(root),
         },
       )
-        .split("\n")
+        .split("\0")
         .filter(Boolean)
         .map((riga) => riga.replace(/\/$/, "")),
     );

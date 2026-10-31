@@ -122,7 +122,8 @@ function datiConToolchain() {
   return dati;
 }
 
-it("il ciclo di vita: installazione con un comando, aggiornamento, ritorno indietro; un pacchetto alterato si rifiuta", () => {
+// L'installatore per Mac e Linux (sh); su Windows si prova scripts/install.ps1.
+it.skipIf(process.platform === "win32")("il ciclo di vita: installazione con un comando, aggiornamento, ritorno indietro; un pacchetto alterato si rifiuta", () => {
   const g = github();
   g.pubblica("9.9.8");
   const dati = datiConToolchain();
@@ -190,7 +191,8 @@ it("la copia pubblica: solo programma, prove, script e documenti per gli utenti;
   expect(sbagliata.stderr).toContain("Uso: pnpm rilascio <versione>");
 });
 
-it("l'installazione installa anche Codex e Claude Code, con i loro installatori ufficiali e senza domande, solo se mancano", () => {
+// L'installatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("l'installazione installa anche Codex e Claude Code, con i loro installatori ufficiali e senza domande, solo se mancano", () => {
   const dati = datiConToolchain();
   const casa = temp("versioni-casa-");
   const lanciatori = join(casa, "bin");
@@ -233,7 +235,8 @@ it("l'installazione installa anche Codex e Claude Code, con i loro installatori 
 // Ubuntu di Lorenzo, 31 ottobre: il disco pieno ha fermato a metà
 // l'installatore di Claude Code, che ha lasciato una copia che non si avvia.
 // L'installazione diceva «installato» e Continuity poi solo «CLI non trovata».
-it("Claude Code che non si installa per disco pieno: lo si dice, con il motivo; e con poco spazio si avvisa prima", () => {
+// L'installatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("Claude Code che non si installa per disco pieno: lo si dice, con il motivo; e con poco spazio si avvisa prima", () => {
   const dati = datiConToolchain();
   const casa = temp("versioni-casa-");
   const fintoClaude = join(temp("claude-pieno-"), "install.sh");
@@ -262,7 +265,8 @@ it("Claude Code che non si installa per disco pieno: lo si dice, con il motivo; 
   expect(poco.stderr).toContain("Spazio libero su disco: 300 MB");
 }, 60_000);
 
-it("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impronta e lo installa senza npm né compilazione", () => {
+// L'installatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impronta e lo installa senza npm né compilazione", () => {
   const g = github();
   // Un pacchetto pronto finto: il programma copiato, un «node» finto.
   const base = temp("pronto-");
@@ -305,7 +309,8 @@ it("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impr
 }, 60_000);
 
 
-it("l'ultima versione è la più alta, non la prima che GitHub elenca (per nome «beta.9» viene prima di «beta.11»)", async () => {
+// L'installatore per Mac e Linux (sh).
+it.skipIf(process.platform === "win32")("l'ultima versione è la più alta, non la prima che GitHub elenca (per nome «beta.9» viene prima di «beta.11»)", async () => {
   const api = temp("ultima-api-");
   const dati = temp("ultima-dati-");
   mkdirSync(join(dati, "app"));
@@ -328,7 +333,8 @@ it("l'ultima versione è la più alta, non la prima che GitHub elenca (per nome 
   expect(await controllaAggiornamento(temp("ultima-dati2-"), app, github)).toBe("2.0.0-beta.11");
 });
 
-it("prima di installare Codex o Claude Code si cerca con la ricerca di Continuity: uno che funziona si usa, uno che non risponde si segnala", () => {
+// L'installatore per Mac e Linux (sh) e CLI finte in sh.
+it.skipIf(process.platform === "win32")("prima di installare Codex o Claude Code si cerca con la ricerca di Continuity: uno che funziona si usa, uno che non risponde si segnala", () => {
   const casa = temp("trova-casa-");
   const bin = join(casa, "bin");
   mkdirSync(bin);

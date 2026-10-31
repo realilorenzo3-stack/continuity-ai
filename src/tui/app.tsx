@@ -1102,20 +1102,21 @@ export function App(props: Opzioni & { onEsci: () => void }) {
             ? `${nomeAI(ai())} lavora da ${Math.max(0, Math.round((adesso() - inizioTurno()) / 1000))}s${attivita() ? " · " + attivita() : ""}`
             : percorsoBreve(
                 props.cartella,
-                casa()
-                  ? 48
-                  : // Lo spazio vero: anche versione e scorciatoie occupano il
-                    // piè. Prima non si contavano e il terminale tagliava la
-                    // fine, cioè il nome del progetto (31 ottobre).
-                    Math.max(
-                      16,
-                      dim().width -
-                        destraPiede().length -
-                        (versionePiede()?.length ?? 0) -
-                        scorciatoiePiede().reduce((n, [t, s]) => n + t.length + s.length + 4, 0) -
-                        16 -
-                        ramo.length,
-                    ),
+                // Lo spazio vero: anche versione e scorciatoie occupano il
+                // piè. Prima non si contavano e il terminale tagliava la fine,
+                // cioè il nome del progetto (31 ottobre). Nella schermata
+                // iniziale il piè è più stretto: al massimo 48.
+                Math.max(
+                  16,
+                  Math.min(
+                    casa() ? 48 : Infinity,
+                    (casa() ? Math.min(dim().width, 76) : dim().width) -
+                      (casa() ? 0 : destraPiede().length + (versionePiede()?.length ?? 0)) -
+                      scorciatoiePiede().reduce((n, [t, s]) => n + t.length + s.length + 4, 0) -
+                      16 -
+                      ramo.length,
+                  ),
+                ),
               ) + (ramo && ramo !== "HEAD" ? ":" + ramo : "")
         }
         destra={casa() ? "" : destraPiede()}

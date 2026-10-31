@@ -1,6 +1,6 @@
-# Le prove di Continuity su Linux (piano di pubblicazione, CONTINUITY_2.0.md
-# §9.1 punto 2). Sul Mac le prove si eseguono in locale; qui Ubuntu, che vale
-# anche per Windows con WSL 2. Niente chiavi, niente AI vere.
+# Le prove di Continuity su Linux e su Windows nativo (piano di pubblicazione,
+# CONTINUITY_2.0.md §9.1 punto 2; Windows dal 31 ottobre). Sul Mac le prove si
+# eseguono in locale. Niente chiavi, niente AI vere.
 name: Prove
 
 on:
@@ -63,3 +63,62 @@ jobs:
           test "$("$CONTINUITY_BIN_DIR/continuity" version)" = "$(node -p 'require("./package.json").version')"
           printf 'ELIMINA\n' | sh scripts/uninstall.sh --all
           test ! -e "$CONTINUITY_DATA_DIR"
+
+  # Windows nativo (lavoro 7, 31 ottobre): le stesse prove, poi il pacchetto
+  # pronto per Windows installato davvero da scripts/install.ps1 e tolto.
+  windows:
+    name: Windows
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.10.0
+          cache: pnpm
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: Git
+        run: |
+          git config --global user.name "Prove di Continuity"
+          git config --global user.email "prove@continuity.invalid"
+          git config --global init.defaultBranch main
+
+      - name: Tipi
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm exec tsc -p tsconfig.tui.json --noEmit
+
+      - name: Compilazione
+        run: pnpm build
+
+      - name: Prove
+        run: pnpm exec vitest run
+
+      - name: Pacchetto pronto per Windows
+        shell: bash
+        run: sh scripts/pacchetto.sh "$(node -p 'require("./package.json").version')" win32-x64 pacchetti
+
+      - name: Installazione e disinstallazione
+        shell: powershell
+        run: |
+          $versione = node -p "require('./package.json').version"
+          $env:CONTINUITY_PACCHETTO = (Resolve-Path "pacchetti\continuity-$versione-win32-x64.tar.gz").Path
+          $env:CONTINUITY_DATA_DIR = "$env:RUNNER_TEMP\installazione\dati"
+          $env:CONTINUITY_SENZA_CODEX = '1'; $env:CONTINUITY_SENZA_CLAUDE = '1'; $env:CONTINUITY_SENZA_PATH = '1'
+          iex ([IO.File]::ReadAllText("$PWD\scripts\install.ps1", [Text.Encoding]::UTF8))
+          $comando = "$env:CONTINUITY_DATA_DIR\bin\continuity.cmd"
+          $installata = (& cmd.exe /c $comando version).Trim()
+          if ($installata -ne $versione) { throw "Versione installata $installata, attesa $versione" }
+          & cmd.exe /c $comando doctor
+          'ELIMINA' | & cmd.exe /c $comando uninstall --all
+          # La cartella del comando si toglie pochi secondi dopo l'uscita.
+          for ($i = 0; $i -lt 20 -and (Test-Path $env:CONTINUITY_DATA_DIR); $i++) { Start-Sleep -Milliseconds 500 }
+          if (Test-Path $env:CONTINUITY_DATA_DIR) { throw 'La disinstallazione --all ha lasciato la cartella dati' }

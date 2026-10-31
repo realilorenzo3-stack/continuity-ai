@@ -61,7 +61,8 @@ beforeEach(() => {
   rmSync(join(cartella, "nega"), { force: true });
 });
 
-it("la chiave si salva senza app fidate, togliendo la voce vecchia", () => {
+// Il Portachiavi del Mac (security finto in sh).
+it.skipIf(process.platform === "win32")("la chiave si salva senza app fidate, togliendo la voce vecchia", () => {
   const chiavi = portachiaviMac(join(cartella, "dati-a"), finto);
   chiavi.salva("openai", "sk-finta");
   const righe = readFileSync(registro, "utf8").trim().split("\n");
@@ -71,7 +72,8 @@ it("la chiave si salva senza app fidate, togliendo la voce vecchia", () => {
   expect(righe[1]).not.toMatch(/ -U /);
 });
 
-it("il segreto si legge una volta: poi resta in memoria finché la voce non cambia", () => {
+// Il Portachiavi del Mac (security finto in sh).
+it.skipIf(process.platform === "win32")("il segreto si legge una volta: poi resta in memoria finché la voce non cambia", () => {
   const chiavi = portachiaviMac(join(cartella, "dati-b"), finto);
   chiavi.salva("openai", "sk-uno");
   expect(chiavi.leggi("openai")).toBe("sk-uno");
@@ -85,7 +87,8 @@ it("il segreto si legge una volta: poi resta in memoria finché la voce non camb
   expect(letture()).toBe(2);
 });
 
-it("«collegato» e la sequenza non leggono il segreto", () => {
+// Il Portachiavi del Mac (security finto in sh).
+it.skipIf(process.platform === "win32")("«collegato» e la sequenza non leggono il segreto", () => {
   const chiavi = portachiaviMac(join(cartella, "dati-c"), finto);
   expect(chiavi.esiste("zai")).toBe(false);
   chiavi.salva("zai", "k");
@@ -96,7 +99,8 @@ it("«collegato» e la sequenza non leggono il segreto", () => {
   expect(chiavi.leggi("zai")).toBeUndefined();
 });
 
-it("se il Mac rifiuta, l'errore lo dice (non «manca la chiave»)", () => {
+// Il Portachiavi del Mac (security finto in sh).
+it.skipIf(process.platform === "win32")("se il Mac rifiuta, l'errore lo dice (non «manca la chiave»)", () => {
   const chiavi = portachiaviMac(join(cartella, "dati-d"), finto);
   chiavi.salva("deepseek", "k");
   writeFileSync(join(cartella, "nega"), "");
