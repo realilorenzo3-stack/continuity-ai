@@ -122,15 +122,21 @@ export function scriptVault(azione: "leggi" | "salva" | "togli" | "togliTutte", 
 export function codificaPowerShell(script: string) {
   return Buffer.from(script, "utf16le").toString("base64");
 }
-export function portachiaviWindows(cartellaDati: string, comando = "powershell.exe"): Portachiavi {
+export function portachiaviWindows(
+  cartellaDati: string,
+  comando = "powershell.exe",
+  // Windows nativo (piattaforme/windows/portachiavi.ts) dice il suo motivo.
+  nonDisponibile = "L'archivio credenziali di Windows non risponde da WSL: controlla che powershell.exe si avvii da questo terminale",
+): Portachiavi {
   const esegui = (script: string, input?: string) =>
     spawnSync(comando, ["-NoProfile", "-NonInteractive", "-EncodedCommand", codificaPowerShell(script)], {
       encoding: "utf8",
+      windowsHide: true,
       input,
       timeout: 30_000,
     });
   return portachiaviConOperazioni(cartellaDati, {
-    nonDisponibile: "L'archivio credenziali di Windows non risponde da WSL: controlla che powershell.exe si avvii da questo terminale",
+    nonDisponibile,
     leggi(servizio, provider) {
       const r = esegui(scriptVault("leggi", servizio, provider));
       return { stato: r.error ? 127 : (r.status ?? 2), uscita: r.stdout ?? "", errore: String(r.stderr ?? r.error?.message ?? "") };

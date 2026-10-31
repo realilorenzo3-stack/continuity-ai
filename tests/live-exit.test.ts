@@ -2,7 +2,7 @@ import { it, expect, vi, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { liveExitFailure } from "../src/adapters/exit.js";
+import { liveExitFailure, pezzoDiErrore } from "../src/adapters/exit.js";
 vi.mock("../src/adapters/live.js", () => ({
   requireSubscriptions: () => ({}),
   subscriptionEnvironment: () => ({ PATH: process.env.PATH }),
@@ -76,4 +76,13 @@ it("non attribuisce quota o incompatibilità a un errore generico", () => {
   expect(liveExitFailure("codex", null, "SIGTERM", "secret")).toContain(
     "SIGTERM",
   );
+});
+it("mostra la riga «Error» dell'AI anche quando è più lunga della coda conservata", () => {
+  // Claude su Windows, 31 ottobre: «Error: MCP tool … not found. Available
+  // MCP tools: …» su una sola riga di oltre 8 KB; la coda ne mostrava la fine.
+  const riga = "Error: MCP tool mcp__continuity__permesso (passed via --permission-prompt-tool) not found. Available MCP tools: " + "mcp__x__y, ".repeat(2000);
+  const tutto = riga + "\n";
+  expect(pezzoDiErrore(tutto.slice(0, 4096), tutto.slice(-8192))).toMatch(/^Error: MCP tool mcp__continuity__permesso/);
+  expect(pezzoDiErrore("avvio\n", "riga\nError: rotto\nfine")).toBe("Error: rotto");
+  expect(pezzoDiErrore("", "solo coda")).toBe("solo coda");
 });

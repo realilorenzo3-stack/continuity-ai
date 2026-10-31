@@ -7,9 +7,18 @@ import { fileFuoriProgetto, parole, soloFileTrascinati } from "../src/tui/allega
 // Trascinando dal Finder il Terminale scrive il percorso fra apici o con
 // gli spazi preceduti da «\».
 it("i percorsi trascinati si leggono come li scrive il Terminale", () => {
-  expect(parole("/Users/io/My\\ File.pdf /tmp/b.txt")).toEqual(["/Users/io/My File.pdf", "/tmp/b.txt"]);
-  expect(parole("'/Users/io/Nota finale.md' \"/x/y z\"")).toEqual(["/Users/io/Nota finale.md", "/x/y z"]);
-  expect(parole("ciao  mondo")).toEqual(["ciao", "mondo"]);
+  expect(parole("/Users/io/My\\ File.pdf /tmp/b.txt", true)).toEqual(["/Users/io/My File.pdf", "/tmp/b.txt"]);
+  expect(parole("'/Users/io/Nota finale.md' \"/x/y z\"", true)).toEqual(["/Users/io/Nota finale.md", "/x/y z"]);
+  expect(parole("ciao  mondo", true)).toEqual(["ciao", "mondo"]);
+});
+
+// Su Windows il Terminale scrive C:\Users\…, fra virgolette se ci sono spazi:
+// «\» separa le cartelle.
+it("Windows: i percorsi trascinati con «\\» restano interi", () => {
+  expect(parole('"C:\\Users\\io\\Nota finale.md" D:\\dati\\b.txt', false)).toEqual([
+    "C:\\Users\\io\\Nota finale.md",
+    "D:\\dati\\b.txt",
+  ]);
 });
 
 it("solo file esistenti diventano allegati; un messaggio resta un messaggio", () => {
@@ -17,7 +26,8 @@ it("solo file esistenti diventano allegati; un messaggio resta un messaggio", ()
   const a = join(d, "Nota con spazi.pdf");
   writeFileSync(a, "x");
   expect(soloFileTrascinati(`'${a}' `)).toEqual([a]);
-  expect(soloFileTrascinati(a.replace(/ /g, "\\ "))).toEqual([a]);
+  if (process.platform !== "win32") expect(soloFileTrascinati(a.replace(/ /g, "\\ "))).toEqual([a]);
+  else expect(soloFileTrascinati(`"${a}"`)).toEqual([a]);
   expect(soloFileTrascinati(`leggi ${a}`)).toBeUndefined();
   expect(soloFileTrascinati(join(d, "manca.pdf"))).toBeUndefined();
   expect(soloFileTrascinati(d)).toBeUndefined();

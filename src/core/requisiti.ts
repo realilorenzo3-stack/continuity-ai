@@ -1,6 +1,7 @@
 // Che cosa serve a Continuity su questo computer, per la configurazione
 // iniziale (piano di pubblicazione, punto 3): che cosa c'è, che cosa manca e
-// il comando esatto per sistemarlo, per Mac, Linux e Windows con WSL.
+// il comando esatto per sistemarlo, per Mac, Linux, Windows con WSL e Windows
+// nativo.
 import { spawnSync } from "node:child_process";
 import { cartellaDatiPredefinita, esiste, sistema, type Sistema } from "../piattaforma.js";
 import { resolveProvider } from "../adapters/resolve.js";
@@ -70,7 +71,7 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
     nome: "Git",
     ok: sonde.esiste("git"),
     nota: "serve per la copia di lavoro e per riportare il lavoro nella tua cartella",
-    rimedio: s === "mac" ? "xcode-select --install" : apt("git"),
+    rimedio: s === "mac" ? "xcode-select --install" : s === "windows" ? "winget install Git.Git" : apt("git"),
   });
 
   if (s === "mac")
@@ -79,6 +80,14 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
       nome: "Portachiavi del Mac",
       ok: sonde.esiste("security"),
       nota: "qui vanno le chiavi dei servizi gratuiti",
+    });
+  else if (s === "windows")
+    elenco.push({
+      id: "chiavi",
+      nome: "Archivio credenziali di Windows",
+      ok: sonde.esiste("powershell.exe"),
+      nota: "qui vanno le chiavi dei servizi gratuiti, protette dal tuo login di Windows",
+      rimedio: "Windows PowerShell (powershell.exe) deve essere nel PATH, come di serie",
     });
   else if (s === "wsl")
     elenco.push({
@@ -106,12 +115,13 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
     nome: "Programma Codex (per i servizi gratuiti)",
     ok: sonde.codexInstallato(),
     nota: "Groq, NVIDIA, Google e gli altri gratuiti lavorano sui file attraverso Codex; non serve l'abbonamento ChatGPT",
-    rimedio: comeInstallare("codex"),
+    rimedio: comeInstallare("codex", s),
   });
 
   // La sandbox di Claude Code su Linux e WSL 2 (code.claude.com/docs/en/sandboxing).
   // Senza, Continuity non fa partire Claude: niente lavoro fuori dalla copia.
-  if (s !== "mac") {
+  // Su Windows nativo la sandbox non esiste: Claude chiede il permesso.
+  if (s !== "mac" && s !== "windows") {
     elenco.push({
       id: "sandbox",
       nome: "Sandbox per Claude Code",
@@ -135,8 +145,13 @@ export function controllaSistema(s: Sistema = sistema(), sonde: Sonde = sondeVer
 // Come installare le CLI in abbonamento, dai siti ufficiali. Continuity non
 // le installa e non ne tocca il login (termini dei fornitori).
 // Fonti: README di openai/codex e code.claude.com/docs/en/setup (29/10/2026).
-// Su Mac, Linux e WSL i loro installatori ufficiali da terminale.
-export function comeInstallare(cli: "codex" | "claude"): string {
+// Su Mac, Linux e WSL i loro installatori ufficiali da terminale; su Windows
+// quelli per PowerShell.
+export function comeInstallare(cli: "codex" | "claude", s: Sistema = sistema()): string {
+  if (s === "windows")
+    return cli === "claude"
+      ? "irm https://claude.ai/install.ps1 | iex"
+      : "irm https://chatgpt.com/codex/install.ps1 | iex";
   return cli === "claude"
     ? "curl -fsSL https://claude.ai/install.sh | bash"
     : "curl -fsSL https://chatgpt.com/codex/install.sh | sh";
@@ -145,6 +160,8 @@ export function comeInstallare(cli: "codex" | "claude"): string {
 // Ollama per l'AI sul computer: dove si trova, e come installarlo se manca.
 export function comeInstallareOllama(s: Sistema = sistema()): string {
   if (s === "mac") return "https://ollama.com/download";
+  // Su Windows nativo l'Ollama di Windows risponde su 127.0.0.1.
+  if (s === "windows") return "https://ollama.com/download/windows";
   // In WSL l'Ollama di Windows di solito non si raggiunge da Linux: si
   // installa dentro Ubuntu.
   return "curl -fsSL https://ollama.com/install.sh | sh";

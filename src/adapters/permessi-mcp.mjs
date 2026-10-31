@@ -84,7 +84,9 @@ function rispondi(id, result) {
   process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result }) + "\n");
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop())) {
+// Avviato come programma (non importato dalle prove). Il nome del file con
+// tutti e due i separatori: su Windows il percorso usa «\».
+if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split(/[\\/]/).pop())) {
   const righe = createInterface({ input: process.stdin });
   righe.on("line", async (riga) => {
     let m;

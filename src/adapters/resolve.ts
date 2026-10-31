@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { atomic } from "../git/snapshot.js";
+import { cercaNelPath, nomeEseguibile, sistema } from "../piattaforma.js";
 
 export type Provider = "codex" | "claude";
 // Versions actually exercised against Continuity. A different one is reported, never
@@ -49,12 +50,9 @@ function piuNuova(a: string, b: string) {
   return false;
 }
 
+// Su Windows solo i .exe (src/piattaforma.ts, cercaNelPath).
 function fromPath(binary: string) {
-  const result = spawnSync("/usr/bin/which", ["-a", binary], {
-    encoding: "utf8",
-    timeout: 10000,
-  });
-  return (result.stdout ?? "").split("\n").filter(Boolean);
+  return cercaNelPath(binary);
 }
 
 // I CLI stanno spesso solo dentro le estensioni dell'editor (VS Code, Cursor)
@@ -80,7 +78,7 @@ function editorCodex() {
     ...nelleEstensioni("openai.chatgpt", (dir) => {
       const bin = join(dir, "bin");
       return existsSync(bin)
-        ? readdirSync(bin).map((arch) => join(bin, arch, "codex"))
+        ? readdirSync(bin).map((arch) => join(bin, arch, nomeEseguibile("codex")))
         : [];
     }),
     "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
@@ -96,7 +94,7 @@ function editorClaude() {
   );
   return [
     ...nelleEstensioni("anthropic.claude-code", (dir) => [
-      join(dir, "resources", "native-binary", "claude"),
+      join(dir, "resources", "native-binary", nomeEseguibile("claude")),
     ]),
     ...(existsSync(versioniInstallate)
       ? readdirSync(versioniInstallate).map((v) => join(versioniInstallate, v))
@@ -160,7 +158,16 @@ export function providerCandidates(name: Provider, root: string) {
   return [
     ...saved(root, name),
     ...fromPath(name),
-    ...(name === "codex"
+    ...(sistema() === "windows"
+      ? // Gli installatori ufficiali per Windows: Codex in
+        // %LOCALAPPDATA%ProgramsOpenAICodexin, Claude Code in ~.localin.
+        name === "codex"
+        ? [
+            join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "Programs", "OpenAI", "Codex", "bin", "codex.exe"),
+            ...editorCodex(),
+          ]
+        : [join(homedir(), ".local", "bin", "claude.exe"), ...editorClaude()]
+      : name === "codex"
       ? [join(homedir(), ".local", "bin", "codex"), ...editorCodex()]
       : [
           "/usr/local/bin/claude",

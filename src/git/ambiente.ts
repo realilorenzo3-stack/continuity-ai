@@ -12,7 +12,7 @@
 // Windows sembrano tutti eseguibili: core.fileMode=false (piano di
 // pubblicazione, punto 2, 29 ottobre 2026).
 import { execFileSync } from "node:child_process";
-import { sistema, type Sistema } from "../piattaforma.js";
+import { sistema, variabiliDiSistema, type Sistema } from "../piattaforma.js";
 import { autocrlfDiWindows, impostazioniPerWindows, sulDiscoDiWindows } from "../../piattaforme/linux-windows/git.js";
 export { impostazioniPerWindows, sulDiscoDiWindows };
 
@@ -25,7 +25,7 @@ function cartellaGitComune(cwd: string): string | undefined {
     return execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], {
       cwd,
       encoding: "utf8",
-      env: { PATH: process.env.PATH, ...BASE },
+      env: { ...variabiliDiSistema(), PATH: process.env.PATH, ...BASE },
       stdio: ["ignore", "pipe", "ignore"],
       timeout: 10_000,
     }).trim();
@@ -41,7 +41,7 @@ export function ambienteGit(
   s: Sistema = sistema(),
   chiedi = { cartellaGitComune, autocrlfDiWindows },
 ): NodeJS.ProcessEnv {
-  const ambiente = { PATH: process.env.PATH, ...BASE };
+  const ambiente = { ...variabiliDiSistema(), PATH: process.env.PATH, ...BASE };
   if (s !== "wsl" || !cwd) return ambiente;
   let extra = ricordate.get(cwd);
   if (!extra) {

@@ -17,6 +17,7 @@ import {
   portachiaviLinux,
   portachiaviWindows,
 } from "../../piattaforme/linux-windows/portachiavi.js";
+import * as win from "../../piattaforme/windows/portachiavi.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 export { percorsoVero, servizioPortachiavi, tra, type Portachiavi } from "./archivio.js";
@@ -53,7 +54,7 @@ export function portachiaviDiSistema(cartellaDati: string, s: Sistema = sistema(
   }
   const dove = archivioScelto(cartellaDati, s);
   if (dove === "mac") return portachiaviMac(cartellaDati);
-  if (dove === "windows") return portachiaviWindows(cartellaDati);
+  if (dove === "windows") return s === "windows" ? win.portachiaviWindows(cartellaDati) : portachiaviWindows(cartellaDati);
   if (dove === "libsecret") return portachiaviLinux(cartellaDati);
   return portachiaviFile(cartellaDati);
 }
@@ -70,8 +71,8 @@ export function archivioScelto(cartellaDati: string, s: Sistema = sistema()): Ar
   if (ricordato) return ricordato;
   const scelto: Archivio = existsSync(join(cartellaDati, "chiavi.json"))
     ? "file"
-    : archivioDisponibile(s === "wsl")
-      ? s === "wsl"
+    : (s === "windows" ? win.archivioDisponibile() : archivioDisponibile(s === "wsl"))
+      ? s === "wsl" || s === "windows"
         ? "windows"
         : "libsecret"
       : "file";
@@ -81,7 +82,13 @@ export function archivioScelto(cartellaDati: string, s: Sistema = sistema()): Ar
 
 // Che cosa dire alla persona quando collega una chiave.
 export function notaArchivio(cartellaDati?: string, s: Sistema = sistema()): string {
-  const dove = cartellaDati ? archivioScelto(cartellaDati, s) : s === "mac" ? "mac" : s === "wsl" ? "windows" : "libsecret";
+  const dove = cartellaDati
+    ? archivioScelto(cartellaDati, s)
+    : s === "mac"
+      ? "mac"
+      : s === "wsl" || s === "windows"
+        ? "windows"
+        : "libsecret";
   if (dove === "mac") return NOTA_CONFERMA;
   if (dove === "windows") return "La chiave va nell'archivio credenziali di Windows, protetto dal tuo login di Windows.";
   if (dove === "libsecret") return "La chiave va nel portachiavi di Linux (libsecret), protetto dal tuo login.";

@@ -4,6 +4,14 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.15 — 2026-10-31
+
+- **Spazio su disco.** L'installatore controlla lo spazio libero prima di cominciare: sotto i 400 MB si ferma e lo dice, sotto 1 GB avvisa (Continuity, Codex e Claude Code ne occupano circa 1 GB).
+- **Codex e Claude Code verificati dopo l'installazione.** Si controlla che funzionino davvero, non l'esito del loro installatore: se non vanno lo si dice, con il motivo (per esempio «spazio su disco esaurito») e il registro.
+- **Claude Code o Codex mancanti: `/collega` e `continuity setup` propongono di installarli.** Prima l'errore vero («CLI non trovata») non veniva riconosciuto: si andava dritti al login, che falliva, e dopo un'installazione non riuscita compariva comunque «installato».
+- **`continuity doctor`** cerca Codex e Claude Code come le sessioni (non solo nel PATH) e chiede Node 26.
+- **Preparazione per Windows senza WSL** (nel codice comune, ancora non distribuita): su Mac e Linux non cambia nulla di visibile.
+
 ## 2.0.0-beta.14 — 2026-10-30
 
 - **Codex e Claude Code: prima si guarda se ci sono già.** L'installatore li cerca con la stessa ricerca di Continuity (PATH, `~/.local/bin`, estensioni di VS Code, app ChatGPT, Homebrew) e controlla che rispondano. Uno che funziona non si tocca e non se ne installa un secondo. Solo se mancano, o se quelli trovati non rispondono, si installa la versione ufficiale, e lo si dice.

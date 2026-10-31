@@ -52,6 +52,7 @@ import {
   realpathSync,
 } from "node:fs";
 import { join, resolve, basename } from "node:path";
+import { resolveProvider } from "../adapters/resolve.js";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -138,7 +139,11 @@ async function service() {
     {
       cwd: appRoot,
       env: process.env,
+      // Staccato: sopravvive al terminale (su Windows Node chiude i figli non
+      // staccati quando il padre esce). Le sue finestre restano nascoste
+      // (piattaforme/windows/processi.ts, nascondiFinestre).
       detached: true,
+      windowsHide: true,
       stdio: ["ignore", log, log],
     },
   );
@@ -220,6 +225,14 @@ try {
         return { status: "warn", detail: "Non disponibile" };
       }
     };
+    const cliTrovata = (nome: "codex" | "claude") => {
+      try {
+        const p = resolveProvider(nome, root);
+        return { status: "pass", detail: `${p.version} (${p.path})` };
+      } catch {
+        return { status: "warn", detail: "Non disponibile" };
+      }
+    };
     const project = value("--project");
     let projectStatus: unknown = "Fixture incorporata";
     if (project) {
@@ -237,14 +250,17 @@ try {
       JSON.stringify(
         {
           node: {
-            status: process.versions.node.startsWith("24.") ? "pass" : "warn",
+            // Node 26.4 o successivo (OpenTUI, package.json «engines»).
+            status: process.versions.node.startsWith("26.") ? "pass" : "warn",
             version: process.versions.node,
           },
           git: check("git", ["--version"]),
-          codex: check("codex", ["--version"]),
+          // Codex e Claude Code con la stessa ricerca dei turni (PATH,
+          // installatori ufficiali, estensioni degli editor).
+          codex: cliTrovata("codex"),
           gemini: check("gemini", ["--version"]),
           antigravity: check(antigravityBinary(), ["--version"]),
-          claude: check("claude", ["--version"]),
+          claude: cliTrovata("claude"),
           project: projectStatus,
           live: "Non validato; nessuna chiamata LLM dal doctor",
           dataDir: root,

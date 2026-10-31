@@ -230,6 +230,38 @@ it("l'installazione installa anche Codex e Claude Code, con i loro installatori 
   expect(existsSync(join(casa, "codex-chiamato"))).toBe(false);
 }, 60_000);
 
+// Ubuntu di Lorenzo, 31 ottobre: il disco pieno ha fermato a metà
+// l'installatore di Claude Code, che ha lasciato una copia che non si avvia.
+// L'installazione diceva «installato» e Continuity poi solo «CLI non trovata».
+it("Claude Code che non si installa per disco pieno: lo si dice, con il motivo; e con poco spazio si avvisa prima", () => {
+  const dati = datiConToolchain();
+  const casa = temp("versioni-casa-");
+  const fintoClaude = join(temp("claude-pieno-"), "install.sh");
+  writeFileSync(
+    fintoClaude,
+    `mkdir -p "$HOME/.local/share/claude/versions"\nprintf 'a metà' > "$HOME/.local/share/claude/versions/2.1.316"\necho "✘ Installation failed"\necho "ENOSPC: no space left on device, copyfile"\n`,
+  );
+  const ambiente = {
+    PATH: "/usr/bin:/bin",
+    HOME: casa,
+    CONTINUITY_DATA_DIR: dati,
+    CONTINUITY_BIN_DIR: join(casa, "bin"),
+    CONTINUITY_SENZA_CODEX: "1",
+    CONTINUITY_SENZA_CLAUDE: "",
+    CONTINUITY_CLAUDE_INSTALLER: `file://${fintoClaude}`,
+    CONTINUITY_SPAZIO_MB: "800",
+  };
+  const r = spawnSync("sh", ["scripts/install.sh"], { env: ambiente, encoding: "utf8" });
+  expect(r.status, r.stderr + r.stdout).toBe(0);
+  expect(r.stdout).toContain("Attenzione: spazio libero su disco 800 MB");
+  expect(r.stdout).toContain("Claude Code non installato (spazio su disco esaurito");
+  expect(r.stdout).not.toContain("Claude Code installato.");
+  // Con meno di 400 MB non si comincia.
+  const poco = spawnSync("sh", ["scripts/install.sh"], { env: { ...ambiente, CONTINUITY_SPAZIO_MB: "300" }, encoding: "utf8" });
+  expect(poco.status).toBe(2);
+  expect(poco.stderr).toContain("Spazio libero su disco: 300 MB");
+}, 60_000);
+
 it("con un pacchetto già pronto per il sistema: lo scarica, ne controlla l'impronta e lo installa senza npm né compilazione", () => {
   const g = github();
   // Un pacchetto pronto finto: il programma copiato, un «node» finto.

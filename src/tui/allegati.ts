@@ -6,14 +6,16 @@
 //   Finder per sceglierli (osascript, «choose file»).
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve, sep } from "node:path";
+import { isAbsolute } from "node:path";
+import { dentroDi } from "../core/percorsi.js";
 import { sistema } from "../piattaforma.js";
 import { scegliFile as scegliFileMac } from "../../piattaforme/macos/allegati.js";
 import { scegliFile as scegliFileLinux } from "../../piattaforme/linux-windows/allegati.js";
 
 // Le parole di un testo come le scrive il Terminale trascinando file: apici
-// singoli o doppi, oppure spazi e caratteri speciali preceduti da «\».
-export function parole(testo: string): string[] {
+// singoli o doppi, oppure spazi e caratteri speciali preceduti da «\». Su
+// Windows «\» separa le cartelle (C:\Users\…) e non protegge nulla.
+export function parole(testo: string, conEscape = sistema() !== "windows"): string[] {
   const fuori: string[] = [];
   let attuale = "";
   let apice: string | undefined;
@@ -30,7 +32,7 @@ export function parole(testo: string): string[] {
       dentro = true;
       continue;
     }
-    if (c === "\\" && i + 1 < testo.length) {
+    if (conEscape && c === "\\" && i + 1 < testo.length) {
       attuale += testo[++i];
       dentro = true;
       continue;
@@ -62,7 +64,7 @@ export function soloFileTrascinati(testo: string): string[] | undefined {
   const t = testo.trim();
   if (!t || t.length > 8000) return undefined;
   const elenco = parole(t).map((p) => p.replace(/^~(?=\/|$)/, homedir()));
-  if (!elenco.length || !elenco.every((p) => p.startsWith("/") && èFile(p)))
+  if (!elenco.length || !elenco.every((p) => isAbsolute(p) && èFile(p)))
     return undefined;
   return elenco;
 }
@@ -71,10 +73,9 @@ export function soloFileTrascinati(testo: string): string[] | undefined {
 // allegati (l'AI non potrebbe leggerli dalla sua copia); quelli dentro il
 // progetto restano testo, perché l'AI li trova già.
 export function fileFuoriProgetto(testo: string, progetto: string): string[] {
-  const radice = resolve(progetto) + sep;
   return parole(testo)
     .map((p) => p.replace(/^~(?=\/|$)/, homedir()))
-    .filter((p) => p.startsWith("/") && !resolve(p).startsWith(radice) && èFile(p));
+    .filter((p) => isAbsolute(p) && !dentroDi(progetto, p) && èFile(p));
 }
 
 // La finestra del sistema per scegliere uno o più file (Finder sul Mac,

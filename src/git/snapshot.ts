@@ -14,15 +14,17 @@ import {
   existsSync,
   rmSync,
 } from "node:fs";
-import { join, resolve, dirname, relative } from "node:path";
+import { join, resolve, dirname, relative, sep } from "node:path";
 import { ambienteGit } from "./ambiente.js";
+import { dentroDi } from "../core/percorsi.js";
 export const hash = (x: string | Buffer) =>
   createHash("sha256").update(x).digest("hex");
 export function atomic(path: string, data: string | Buffer) {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = path + "." + randomUUID();
   writeFileSync(tmp, data, { mode: 0o600, flag: "wx" });
-  const fd = openSync(tmp, "r");
+  // «r+»: Windows sincronizza solo un file aperto anche in scrittura.
+  const fd = openSync(tmp, "r+");
   fsyncSync(fd);
   closeSync(fd);
   renameSync(tmp, path);
@@ -30,7 +32,8 @@ export function atomic(path: string, data: string | Buffer) {
   try {
     fsyncSync(parent);
   } catch (e: any) {
-    if (!["EINVAL", "ENOTSUP"].includes(e.code)) throw e;
+    // Windows non sincronizza le cartelle (EPERM): il rename è già sul disco.
+    if (!["EINVAL", "ENOTSUP", "EPERM", "EISDIR"].includes(e.code)) throw e;
   } finally {
     closeSync(parent);
   }
@@ -43,7 +46,7 @@ export function safe(root: string, path: string) {
   )
     throw Error("Percorso non valido");
   const full = resolve(root, path);
-  if (!full.startsWith(resolve(root) + "/")) throw Error("Path traversal");
+  if (!dentroDi(root, full)) throw Error("Path traversal");
   return full;
 }
 // Ignored paths stay out of the snapshot: they are build output and caches, not
@@ -88,7 +91,8 @@ export function inventory(root: string, tollerante = false) {
   function walk(dir: string) {
     for (const name of readdirSync(dir).sort()) {
       const full = join(dir, name),
-        path = relative(root, full);
+        // Sempre con «/», come i percorsi di Git, anche su Windows.
+        path = relative(root, full).split(sep).join("/");
       if (
         [
           ".git",

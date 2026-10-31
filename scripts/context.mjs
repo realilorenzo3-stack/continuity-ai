@@ -6,7 +6,7 @@ import {
   existsSync,
   watch,
 } from "node:fs";
-import { resolve, join, relative } from "node:path";
+import { resolve, join, relative, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url))),
@@ -29,7 +29,8 @@ function collect(dir, output = {}) {
       st = statSync(path);
     if (st.isDirectory()) collect(path, output);
     else if (st.isFile()) {
-      const rel = relative(root, path);
+      // Sempre con «/», anche su Windows: lo stesso inventario su ogni computer.
+      const rel = relative(root, path).split(sep).join("/");
       output[rel] = createHash("sha256")
         .update(readFileSync(path))
         .digest("hex");

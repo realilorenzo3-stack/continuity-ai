@@ -68,8 +68,21 @@ it("il sistema in WSL: le chiavi nell'archivio di Windows (powershell.exe), e la
 });
 
 it("Codex e Claude Code si installano con i loro installatori ufficiali", () => {
-  expect(comeInstallare("codex")).toBe("curl -fsSL https://chatgpt.com/codex/install.sh | sh");
-  expect(comeInstallare("claude")).toBe("curl -fsSL https://claude.ai/install.sh | bash");
+  expect(comeInstallare("codex", "linux")).toBe("curl -fsSL https://chatgpt.com/codex/install.sh | sh");
+  expect(comeInstallare("claude", "mac")).toBe("curl -fsSL https://claude.ai/install.sh | bash");
+  // Windows nativo: gli installatori per PowerShell.
+  expect(comeInstallare("codex", "windows")).toBe("irm https://chatgpt.com/codex/install.ps1 | iex");
+  expect(comeInstallare("claude", "windows")).toBe("irm https://claude.ai/install.ps1 | iex");
+});
+
+it("il sistema su Windows nativo: Git da winget, chiavi nell'archivio di Windows, nessuna sandbox da installare", () => {
+  const r = controllaSistema("windows", sonde(["powershell.exe"]));
+  expect(r.map((x) => [x.id, x.ok, x.nome])).toEqual([
+    ["git", false, "Git"],
+    ["chiavi", true, "Archivio credenziali di Windows"],
+    ["codex", true, "Programma Codex (per i servizi gratuiti)"],
+  ]);
+  expect(r[0].rimedio).toBe("winget install Git.Git");
 });
 
 // Un Contesto finto: le scelte si danno in ordine, una per riquadro.
@@ -104,7 +117,8 @@ const dipendenze = (connesso: boolean, ollama = false) => ({
   ollamaRaggiungibile: async () => ollama,
 });
 
-it("il percorso completo: lingua, sistema, abbonamenti, gratuiti, Ollama, ordine, revisore; poi non si ripropone", async () => {
+// Il percorso su Linux (sandbox da installare con apt): il sistema vero conta.
+it.skipIf(process.platform === "win32")("il percorso completo: lingua, sistema, abbonamenti, gratuiti, Ollama, ordine, revisore; poi non si ripropone", async () => {
   const { c, cartellaDati, riquadri, avvisi } = contesto([
     "sandbox", // copia il comando
     "avanti", // sistema

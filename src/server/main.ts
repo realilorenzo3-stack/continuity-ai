@@ -36,7 +36,7 @@ import {
   openProject,
   stessaCartella,
 } from "../core/project.js";
-import { cartellaDatiPredefinita } from "../piattaforma.js";
+import { cartellaDatiPredefinita, infoProcesso, sistema } from "../piattaforma.js";
 import { migraDati } from "../core/migrazioni.js";
 const root = resolve(cartellaDatiPredefinita());
 mkdirSync(root, { recursive: true, mode: 0o700 });
@@ -59,6 +59,13 @@ try {
   const vecchio = JSON.parse(testo);
   let vivo = false;
   if (Number.isSafeInteger(vecchio.pid) && vecchio.pid !== process.pid) {
+    // Windows non ha «ps»: la riga di comando la dà Windows (piattaforma).
+    if (sistema() === "windows") {
+      const info = infoProcesso(vecchio.pid);
+      vivo = info === "incerto" ? true : Boolean(info?.comando.replaceAll("\\", "/").includes("server/main.ts"));
+      if (!vivo) rmSync(lock, { force: true });
+      throw Error("controllato");
+    }
     const ps = spawnSync("ps", ["-o", "command=", "-p", String(vecchio.pid)], {
       encoding: "utf8",
       timeout: 5000,

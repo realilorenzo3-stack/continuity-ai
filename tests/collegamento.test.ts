@@ -15,6 +15,8 @@ import { inspectProject } from "../src/core/project.js";
 import { Store } from "../src/persistence/store.js";
 import { Engine } from "../src/core/engine.js";
 import { collegaAbbonamento, proponiCollegamento } from "../src/tui/comandi.js";
+import { pickProvider } from "../src/adapters/resolve.js";
+import { dettaglioErrore } from "../src/cli/providers.js";
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -146,7 +148,11 @@ it("/collega per un abbonamento: avviso, login ufficiale nel terminale (che apre
     providerLogin: () => ({ binary: "/bin/claude", args: ["auth", "login", "--claudeai"], env: {}, cwd: "/", note: "" }),
   } as any);
   expect(assente.riquadri[0].titolo).toBe("Claude Code non è installato");
-  expect(assente.terminale[0]).toEqual(["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"]);
+  expect(assente.terminale[0]).toEqual(
+    process.platform === "win32"
+      ? ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm https://claude.ai/install.ps1 | iex"]
+      : ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
+  );
   expect(assente.riquadri[1].titolo).toBe("Collegare Claude Code?");
   expect(assente.terminale[1]).toEqual(["/bin/claude", "auth", "login", "--claudeai"]);
   expect(esito).toBe(true);
@@ -160,6 +166,33 @@ it("/collega per un abbonamento: avviso, login ufficiale nel terminale (che apre
     },
   } as any);
   expect(noInstalla.terminale).toEqual([]);
+});
+
+// Prova di Lorenzo su Ubuntu del 31 ottobre: Claude Code assente, e /collega e
+// la configurazione non proponevano di installarlo. Le prove sopra usano il
+// testo già pronto; qui l'errore è quello vero della ricerca.
+it("il programma che manca, con l'errore vero della ricerca, si riconosce come «non installato»", async () => {
+  for (const cli of ["claude", "codex"] as const) {
+    let errore: unknown;
+    try {
+      pickProvider(cli, ["/non/esiste/" + cli]);
+    } catch (e) {
+      errore = e;
+    }
+    const detail = dettaglioErrore(errore);
+    expect(detail).toBe("CLI non installata o non nel PATH");
+    // Così /collega propone «Installalo adesso».
+    const s = contesto([false]);
+    await collegaAbbonamento(s.c, providerNoto(cli)!, {
+      providerStatus: () => ({ connected: false, detail }),
+      providerLogin: () => {
+        throw Error("non deve partire");
+      },
+    } as any);
+    expect(s.riquadri[0].titolo).toBe(`${cli === "claude" ? "Claude Code" : "Codex"} non è installato`);
+  }
+  expect(dettaglioErrore(Error("spawn /x ENOENT"))).toBe("CLI non installata o non nel PATH");
+  expect(dettaglioErrore(Error("altro errore\nseconda riga"))).toBe("altro errore");
 });
 
 it("in inglese i tre messaggi si traducono", async () => {
@@ -184,6 +217,10 @@ it("un servizio gratuito senza il programma Codex: messaggio chiaro e il comando
   expect(await proponiCollegamento(c, testo)).toBe(true);
   expect(riquadri[0].titolo).toBe("Serve il programma Codex");
   expect(riquadri[0].nota).toMatch(/Non serve l'abbonamento ChatGPT/);
-  expect(avvisi.at(-1)).toMatch(/curl -fsSL https:\/\/chatgpt\.com\/codex\/install\.sh \| sh$/);
+  expect(avvisi.at(-1)).toMatch(
+    process.platform === "win32"
+      ? /irm https:\/\/chatgpt\.com\/codex\/install\.ps1 \| iex$/
+      : /curl -fsSL https:\/\/chatgpt\.com\/codex\/install\.sh \| sh$/,
+  );
 });
 

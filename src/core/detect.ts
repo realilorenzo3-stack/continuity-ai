@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { dentroDi } from "./percorsi.js";
 import type { ProjectConfig } from "./project.js";
 
 // An average user should not have to write a config file to try the tool. If the
@@ -62,7 +63,7 @@ export function detectVerify(root: string): {
 // e quasi certamente non è ciò che la persona intende.
 export function cartellaAdatta(root: string) {
   const casa = homedir();
-  if (root === casa || root === "/" || casa.startsWith(root + "/"))
+  if (root === casa || dirname(root) === root || dentroDi(root, casa))
     return {
       adatta: false,
       motivo: "è la tua cartella personale, non un progetto",

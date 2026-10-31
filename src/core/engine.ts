@@ -78,7 +78,7 @@ import {
   type Catalogo,
 } from "./modelsdev.js";
 import { percorsoSensibile } from "./sensibili.js";
-import { copiaVeloce, sandboxClaude } from "../piattaforma.js";
+import { copiaVeloce, sandboxClaude, segnalaAlbero, sistema, variabiliDiSistema } from "../piattaforma.js";
 import {
   CARTELLA_CONTINUITY,
   leggiAgenti,
@@ -108,7 +108,7 @@ import {
   antigravityEnvironment,
   antigravityInput,
 } from "../adapters/antigravity.js";
-import { liveExitFailure } from "../adapters/exit.js";
+import { liveExitFailure, pezzoDiErrore } from "../adapters/exit.js";
 import { geminiEnvironment } from "../adapters/gemini.js";
 import type { Successor } from "../adapters/live.js";
 import {
@@ -161,7 +161,8 @@ import {
   appendFileSync,
   renameSync,
 } from "node:fs";
-import { join, resolve, basename, dirname } from "node:path";
+import { join, resolve, basename, dirname, isAbsolute } from "node:path";
+import { dentroDi } from "./percorsi.js";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { validateHandoff, validatePackage } from "../handoff/schema.js";
@@ -448,7 +449,7 @@ export class Engine {
       for (const child of this.children.values())
         if (child.pid) {
           try {
-            process.kill(-child.pid, "SIGKILL");
+            segnalaAlbero(child.pid, "SIGKILL");
           } catch {}
         }
       throw e;
@@ -676,7 +677,9 @@ export class Engine {
               rmSync(destinazione, { recursive: true, force: true });
             }
           try {
-            symlinkSync(origine, destinazione);
+            // Su Windows un collegamento a una cartella senza permessi di
+            // amministratore è una «junction».
+            symlinkSync(origine, destinazione, "junction");
             collegate.push(dipendenze);
           } catch {}
         }
@@ -689,7 +692,7 @@ export class Engine {
           encoding: "utf8",
           env: ambienteGit(work),
         }).trim();
-        const assoluta = cartellaGit.startsWith("/")
+        const assoluta = isAbsolute(cartellaGit)
           ? cartellaGit
           : join(work, cartellaGit);
         mkdirSync(join(assoluta, "info"), { recursive: true });
@@ -3454,7 +3457,7 @@ export class Engine {
     let esito: ReturnType<typeof chi> = prima;
     for (const segnale of ["SIGTERM", "SIGKILL"] as const) {
       try {
-        process.kill(-precedente.pid, segnale);
+        segnalaAlbero(precedente.pid, segnale);
       } catch {}
       for (let i = 0; i < 50; i++) {
         await new Promise((ok) => setTimeout(ok, 40));
@@ -3592,7 +3595,7 @@ export class Engine {
     const radice = r.project?.root
       ? join(r.project.root, ".git", "worktrees")
       : "";
-    if (!verso || !radice || !resolve(r.work, verso).startsWith(radice + "/"))
+    if (!verso || !radice || !dentroDi(radice, resolve(r.work, verso)))
       throw Error(
         "Il collegamento Git della copia di lavoro non è quello creato da Continuity: per sicurezza non eseguo comandi Git su di essa",
       );
@@ -4359,7 +4362,7 @@ export class Engine {
           // si ferma qui, prima di spendere; l'errore chiude il turno.
           if (e.type === "error" && (e as any).fermare)
             try {
-              process.kill(-child.pid!, "SIGTERM");
+              segnalaAlbero(child.pid!, "SIGTERM");
             } catch {}
         }
       },
@@ -4377,9 +4380,11 @@ export class Engine {
       }
     });
     let stderrTail = "";
+    let stderrInizio = "";
     child.stderr!.setEncoding("utf8");
     child.stderr!.on("data", (chunk: string) => {
       vivo();
+      if (stderrInizio.length < 4096) stderrInizio = (stderrInizio + chunk).slice(0, 4096);
       stderrTail = (stderrTail + chunk).slice(-8192);
     });
     child.on("error", () => {
@@ -4577,7 +4582,7 @@ export class Engine {
           const attuale = this.run(r.id);
           attuale.uscitaFallita =
             `${r.agent} si è interrotto (uscita ${code})` +
-            (stderrTail ? `: ${String(stderrTail).slice(0, 160)}` : "");
+            (stderrTail ? `: ${pezzoDiErrore(stderrInizio, String(stderrTail))}` : "");
           this.event(attuale, "attempt.failed", attuale.uscitaFallita, r.agent);
         }
       }
@@ -4751,7 +4756,7 @@ export class Engine {
         cwd: r.work,
         encoding: "utf8",
         timeout: 120000,
-        env: { PATH: process.env.PATH },
+        env: { ...variabiliDiSistema(), PATH: process.env.PATH },
         maxBuffer: 1024 * 1024,
       });
     } catch (e: any) {
@@ -4857,7 +4862,7 @@ export class Engine {
         cwd: r.work,
         // A home of its own: with HOME on the worktree, npm and friends wrote
         // their caches into the files under verification.
-        env: { PATH: process.env.PATH, HOME: casa, LANG: "en_US.UTF-8" },
+        env: { ...variabiliDiSistema(), PATH: process.env.PATH, HOME: casa, LANG: "en_US.UTF-8" },
       });
       const code = result.error ? null : (result.status ?? null);
       runs.push({
@@ -5464,8 +5469,17 @@ function eseguiVerifica(
     };
     let figlio;
     try {
-      figlio = spawn(comando, argomenti, {
+      // Su Windows i comandi dei progetti sono spesso script (npm.cmd,
+      // pnpm.cmd), che partono solo da cmd.exe: la riga si scrive intera, con
+      // le virgolette dove servono.
+      const suWindows = sistema() === "windows";
+      const riga = [comando, ...argomenti]
+        .map((p) => (/^[\w@+=:,./\\-]+$/.test(p) ? p : `"${p.replace(/"/g, '""')}"`))
+        .join(" ");
+      figlio = spawn(suWindows ? riga : comando, suWindows ? [] : argomenti, {
         ...opzioni,
+        shell: suWindows,
+        windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
         timeout: 600_000,
         killSignal: "SIGKILL",

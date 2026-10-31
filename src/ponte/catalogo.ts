@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ProviderNoto } from "../core/provider.js";
+import { variabiliDiSistema } from "../piattaforma.js";
 
 export const ISTRUZIONI_PONTE =
   "You are a coding agent working in the user's project folder through Continuity. " +
@@ -28,7 +29,7 @@ export function voceDiBase(binario: string, versione: string, cartellaDati: stri
   const uscita = execFileSync(binario, ["debug", "models"], {
     encoding: "utf8",
     timeout: 30_000,
-    env: { PATH: process.env.PATH, HOME: process.env.HOME, CODEX_HOME: casa },
+    env: { ...variabiliDiSistema(), PATH: process.env.PATH, HOME: process.env.HOME, CODEX_HOME: casa },
   });
   const modelli: any[] = JSON.parse(uscita).models ?? [];
   // Un modello «classico»: senza la modalità solo-codice e la revisione

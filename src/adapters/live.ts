@@ -1,6 +1,7 @@
 import { istruzioneLingua, LINGUA_PREDEFINITA, type Lingua } from "../core/lingua.js";
 import { fileURLToPath } from "node:url";
 import type { Connettore } from "./connettori.js";
+import { variabiliDiSistema } from "../piattaforma.js";
 import {
   agentiPerClaude,
   agentiPerCodex,
@@ -21,6 +22,8 @@ export const TEMPO_MASSIMO_STRUMENTO_MS = 180_000;
 // tokens from the inherited environment. Authentication remains in official CLIs.
 export function subscriptionEnvironment(): NodeJS.ProcessEnv {
   return {
+    // Windows: SystemRoot, USERPROFILE, APPDATA… (src/piattaforma.ts).
+    ...variabiliDiSistema(),
     PATH: process.env.PATH,
     HOME: homedir(),
     // The account name, not a credential: without it the Claude CLI cannot read

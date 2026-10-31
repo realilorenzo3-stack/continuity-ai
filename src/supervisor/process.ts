@@ -1,7 +1,15 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { atomic } from "../git/snapshot.js";
 import { realpathSync } from "node:fs";
-import { processiConCartellaIn, senzaTerminale } from "../piattaforma.js";
+import {
+  gruppoDiProcessi,
+  infoProcesso,
+  processiConCartellaIn,
+  segnalaAlbero,
+  senzaTerminale,
+  sistema,
+  variabiliDiSistema,
+} from "../piattaforma.js";
 export function launch(
   file: string,
   args: string[],
@@ -12,8 +20,12 @@ export function launch(
   const child = spawn(file, args, {
     cwd,
     shell: false,
-    detached: true,
+    // Un gruppo di processi suo su Mac e Linux; su Windows niente gruppi e
+    // nessuna finestra (src/piattaforma.ts, gruppoDiProcessi).
+    detached: gruppoDiProcessi(),
+    windowsHide: true,
     env: options.env ?? {
+      ...variabiliDiSistema(),
       PATH: process.env.PATH,
       HOME: cwd,
       LANG: "en_US.UTF-8",
@@ -36,7 +48,7 @@ export function launch(
   } catch (e) {
     if (child.pid) {
       try {
-        process.kill(-child.pid, "SIGKILL");
+        segnalaAlbero(child.pid, "SIGKILL");
       } catch {}
     }
     throw e;
@@ -64,6 +76,8 @@ export function viviNelGruppo(pgid: number) {
 }
 // Vero se il gruppo è fermo: nessun processo, oppure solo zombie.
 export function fermo(pgid: number) {
+  // Windows: l'albero si ferma tutto insieme (taskkill /T), basta il capo.
+  if (sistema() === "windows") return !vivo(pgid);
   try {
     process.kill(-pgid, 0);
     return false;
@@ -104,7 +118,7 @@ function vivo(pid: number) {
 // bloccava la sessione (prova di Lorenzo del 23 ottobre, «kill EPERM»).
 function segnala(pgid: number, segnale: NodeJS.Signals) {
   try {
-    process.kill(-pgid, segnale);
+    segnalaAlbero(pgid, segnale);
   } catch (e: any) {
     if (e.code === "ESRCH") return;
     if (e.code !== "EPERM") throw e;
@@ -139,7 +153,7 @@ export async function stop(child: ChildProcess): Promise<{ restano: string[] }> 
   }
   if (vivo(pid)) throw Error("Albero processi non arrestato");
   return {
-    restano: processiNelGruppo(pid).map((p) => `${p.comando.split("/").pop()} (${p.pid})`),
+    restano: processiNelGruppo(pid).map((p) => `${nomeDelProgramma(p.comando)} (${p.pid})`),
   };
 }
 
@@ -155,6 +169,7 @@ export function identificaGruppo(
   // Quando Continuity l'ha avviato (dalla ricevuta).
   avviatoAlle?: string,
 ): "fermo" | "nostro" | "altro" | "incerto" {
+  if (sistema() === "windows") return identificaSuWindows(pgid, binario, avviatoAlle);
   const ps = spawnSync(
     "ps",
     ["-o", "pgid=,stat=,lstart=,command=", "-p", String(pgid)],
@@ -182,7 +197,7 @@ export function identificaGruppo(
     )
       return "altro";
     const testo = comando.join(" ");
-    const nome = binario?.split("/").pop();
+    const nome = nomeDelProgramma(binario);
     if (nome && testo.includes(nome)) return "nostro";
     // Ricevute scritte prima che vi si annotasse il programma, o un lanciatore
     // che cede il posto a un eseguibile con un altro nome.
@@ -196,6 +211,31 @@ export function identificaGruppo(
   const vivi = viviNelGruppo(pgid);
   if (vivi === undefined) return "incerto";
   return vivi > 0 ? "nostro" : "fermo";
+}
+
+// Il nome del programma, senza cartelle (né «.exe» su Windows).
+function nomeDelProgramma(binario?: string) {
+  return binario?.split(/[\\/]/).pop()?.replace(/\.exe$/i, "");
+}
+
+// Windows non ha «ps» né gruppi: si chiede a Windows chi ha quel numero.
+// Senza gruppi non si vedono i figli di un capo già fermo: taskkill /T li
+// ferma con lui, quando è Continuity a fermarlo.
+function identificaSuWindows(
+  pid: number,
+  binario: string | undefined,
+  avviatoAlle?: string,
+): "fermo" | "nostro" | "altro" | "incerto" {
+  const info = infoProcesso(pid);
+  if (info === "incerto") return "incerto";
+  if (!info) return "fermo";
+  const quando = avviatoAlle ? Date.parse(avviatoAlle) : NaN;
+  if (Number.isFinite(quando) && Number.isFinite(info.nato) && Math.abs(info.nato - quando) > 10_000)
+    return "altro";
+  const nome = nomeDelProgramma(binario);
+  if (nome && info.comando.toLowerCase().includes(nome.toLowerCase())) return "nostro";
+  if (PROVIDER_NOTI.test(info.comando) && (!nome || PROVIDER_NOTI.test(nome))) return "nostro";
+  return "altro";
 }
 
 // Un processo che l'AI ha lanciato in background (un server di prova, un

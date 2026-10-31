@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { variabiliDiSistema } from "../piattaforma.js";
 
 // I connettori di ciascuna AI: quelli che la persona ha aggiunto e autorizzato
 // sulle piattaforme ufficiali (claude.ai e Claude Code per Claude, ChatGPT e
@@ -164,6 +165,7 @@ export function leggiElencoCodex(
 }
 
 const ambiente = (): NodeJS.ProcessEnv => ({
+  ...variabiliDiSistema(),
   PATH: process.env.PATH,
   HOME: homedir(),
   USER: process.env.USER,

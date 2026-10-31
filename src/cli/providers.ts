@@ -79,14 +79,20 @@ export function providerStatus(name: Provider, root: string) {
       detail: `${ANTIGRAVITY_VERSION}, profilo dedicato di Continuity`,
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return {
-      connected: false,
-      detail: /ENOENT|not found|non trovato/i.test(message)
-        ? "CLI non installata o non nel PATH"
-        : message.split("\n")[0].slice(0, 160),
-    };
+    return { connected: false, detail: dettaglioErrore(e) };
   }
+}
+
+// Il programma che manca si dice sempre con le stesse parole, che /collega e
+// la configurazione riconoscono per proporre di installarlo. L'errore vero
+// della ricerca è «claude: CLI non trovata…»: prima si cercava «non
+// trovato», al maschile, e il programma assente non veniva riconosciuto
+// (prova di Lorenzo su Ubuntu del 31 ottobre: niente proposta di installarlo).
+export function dettaglioErrore(e: unknown) {
+  const message = e instanceof Error ? e.message : String(e);
+  return /ENOENT|not found|non trovat[oa]/i.test(message)
+    ? "CLI non installata o non nel PATH"
+    : message.split("\n")[0].slice(0, 160);
 }
 
 export function providerLogin(name: Provider, root: string) {

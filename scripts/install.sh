@@ -56,6 +56,30 @@ continuity_sha256() {
   fi
 }
 
+# Lo spazio libero nella casa, in MB. Continuity, Codex e Claude Code
+# occupano circa 1 GB, e l'installatore di Claude Code ne usa il doppio mentre
+# copia (31 ottobre: sull'Ubuntu di Lorenzo il disco pieno lo ha fermato a
+# metà, e Continuity diceva solo «CLI non trovata»). Sotto i 400 MB non si
+# comincia nemmeno; sotto 1 GB si avvisa. Una volta sola, anche quando questo
+# script ne esegue un altro (CONTINUITY_SPAZIO_VISTO).
+continuity_spazio_mb() {
+  # CONTINUITY_SPAZIO_MB: solo per le prove.
+  [ -n "${CONTINUITY_SPAZIO_MB:-}" ] && { echo "$CONTINUITY_SPAZIO_MB"; return; }
+  df -Pk "$HOME" 2>/dev/null | awk 'NR == 2 { print int($4 / 1024) }'
+}
+if [ -z "${CONTINUITY_SPAZIO_VISTO:-}" ]; then
+  continuity_spazio=$(continuity_spazio_mb)
+  if [ -n "$continuity_spazio" ] && [ "$continuity_spazio" -lt 400 ]; then
+    echo "Spazio libero su disco: $continuity_spazio MB. Continuity ne occupa circa 300, Codex e Claude Code circa 700: libera spazio e ripeti." >&2
+    exit 2
+  fi
+  if [ -n "$continuity_spazio" ] && [ "$continuity_spazio" -lt 1024 ]; then
+    echo "Attenzione: spazio libero su disco $continuity_spazio MB. Continuity, Codex e Claude Code ne occupano circa 1 GB: se finisce, Codex o Claude Code non si installano."
+  fi
+  CONTINUITY_SPAZIO_VISTO=1
+  export CONTINUITY_SPAZIO_VISTO
+fi
+
 # I sorgenti di Continuity sono qui accanto? Si controlla il nome del
 # pacchetto: con «curl | sh» la cartella è quella della persona, che può
 # essere un suo progetto con un package.json qualsiasi.
@@ -459,10 +483,29 @@ continuity_cli() {
     return 0
   }
   echo "Installo $2: $6"
-  if curl -fsSL "$3" | CODEX_NON_INTERACTIVE=1 "$4" >"$continuity_data/$1-installazione.log" 2>&1; then
+  continuity_log="$continuity_data/$1-installazione.log"
+  curl -fsSL "$3" | CODEX_NON_INTERACTIVE=1 "$4" >"$continuity_log" 2>&1 || true
+  # Si controlla che cosa c'è dopo, non l'esito dell'installatore: quello di
+  # Claude Code può fallire a metà e lasciare copie che non si avviano.
+  continuity_esito=0
+  continuity_trovato=$(continuity_trova_cli "$1") || continuity_esito=$?
+  [ "$continuity_esito" = 0 ] && [ -z "$continuity_trovato" ] && continuity_esito=2
+  # Senza la ricerca di Continuity (Node non utilizzabile): almeno il PATH e
+  # ~/.local/bin, come prima di installare.
+  if [ "$continuity_esito" != 0 ] && [ "$continuity_esito" != 1 ] &&
+    { command -v "$1" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$1" ]; }; then
+    continuity_esito=0
+  fi
+  if [ "$continuity_esito" = 0 ]; then
     echo "  $2 installato."
   else
-    echo "  $2 non installato (dettagli in $continuity_data/$1-installazione.log): /collega $1 lo riproporrà."
+    if grep -qiE 'ENOSPC|no space left' "$continuity_log" 2>/dev/null; then
+      continuity_motivo="spazio su disco esaurito: libera spazio, poi /collega $1 lo reinstalla"
+    else
+      continuity_motivo=$(grep -iE 'error|fail|errore' "$continuity_log" 2>/dev/null | tail -n 1 | cut -c1-200)
+      continuity_motivo="${continuity_motivo:+$continuity_motivo; }/collega $1 lo riproporrà"
+    fi
+    echo "  $2 non installato ($continuity_motivo). Dettagli in $continuity_log."
   fi
 }
 continuity_cli codex "Codex" "${CONTINUITY_CODEX_INSTALLER:-https://chatgpt.com/codex/install.sh}" sh "${CONTINUITY_SENZA_CODEX:-}" \

@@ -31,7 +31,7 @@ import { messaggio, pubblica, testoConsegna, type Api, type Esito } from "./clie
 import type { Voce } from "./tipi.js";
 import { pannelloFlusso } from "./flusso.js";
 import { configurazione } from "./configura.js";
-import { copiaNegliAppunti, sandboxClaude, sistema } from "../piattaforma.js";
+import { copiaNegliAppunti, rigaDiComando, sandboxClaude, sistema } from "../piattaforma.js";
 import { leggiModoClaude, salvaModoClaude, type ModoClaude } from "../core/permessi-claude.js";
 import { chiedeCodex, daCollegare, nomeDaCollegare, serveCodex } from "../core/collegamento.js";
 import { resolveProvider } from "../adapters/resolve.js";
@@ -612,7 +612,8 @@ export async function installaCli(
       : `Continuity esegue l'installatore ufficiale di ${nome} in questo terminale (senza password), poi torni qui.`,
   });
   if (!v?.valore || !c.nelTerminale) return false;
-  await c.nelTerminale("sh", ["-c", comando], process.env, c.cartellaDati);
+  const [shell, argomenti] = rigaDiComando(comando);
+  await c.nelTerminale(shell, argomenti, process.env, c.cartellaDati);
   const fatto = /non installata|not found/i.test(stato(cli, c.cartellaDati).detail) === false;
   c.avvisa(
     fatto ? "ok" : "errore",

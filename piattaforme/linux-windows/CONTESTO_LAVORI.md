@@ -35,6 +35,10 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
 - **Codex installato insieme a Continuity**, con l'installatore ufficiale. Fatto, da provare.
 - **Installazione in pochi secondi, come opencode**: pacchetto già pronto per ogni sistema (fatto, da verificare al primo rilascio: lavoro 0). Poi **Windows nativo, senza WSL** (lavoro 7).
 
+## Stato al 30 ottobre sera
+- **macOS e Linux: conclusi per questa fase** con la 2.0.0-beta.14. Installazione con un comando, pacchetti pronti, Codex e Claude Code installati solo se mancano o non rispondono (verificato su Ubuntu e macOS puliti e con un `claude` rotto), aggiornamento, configurazione.
+- **Windows nativo:** lo sviluppa Lorenzo dal PC Windows (lavoro 7).
+
 ## Lavori aperti, in ordine
 
 **Dal 30 ottobre sera la priorità è il lavoro 7, Windows nativo.**
@@ -93,6 +97,18 @@ Con WSL Continuity su Windows non è partito nelle prove di Lorenzo (`WSL_E_DIST
 **Obiettivo:** da PowerShell, `irm …/install.ps1 | iex` scarica il pacchetto pronto `win32-x64` (Node, programma, dipendenze), lo mette in `%LOCALAPPDATA%\Continuity`, crea il comando `continuity`, installa Codex e Claude Code con i loro installatori ufficiali per Windows se mancano, e in pochi secondi si parte con `continuity setup`.
 
 **Struttura:** una terza distribuzione, `piattaforme/windows/`, con le stesse funzioni delle altre due (`sistema.ts`, `portachiavi.ts`, `allegati.ts`). `src/sistema.ts` riconosce `"windows"` (`process.platform === "win32"`). Le regole restano quelle di `piattaforme/LEGGIMI.md`; `tests/struttura.test.ts` va esteso alla terza.
+
+**Fatto il 30 ottobre sera** (dettagli in `docs/CONTEXT.md`):
+- la distribuzione `piattaforme/windows/`;
+- `sistema()` → `"windows"`;
+- chiavi, appunti, link, cartella dati, scelta dei file;
+- processi: `taskkill /T`, `Win32_Process`, variabili di sistema, niente finestre;
+- percorsi con `path.relative`;
+- CLI solo `.exe`, nelle cartelle degli installatori ufficiali;
+- requisiti e installatori per Windows;
+- `bin\continuity2.cmd`.
+
+Provati davvero sul PC di Lorenzo. Le voci qui sotto restano aperte per ciò che manca.
 
 **Che cosa oggi presuppone un sistema Unix** (inventario dal codice, 30 ottobre):
 - [ ] **Processi.** `spawn(..., { detached: true })` e `process.kill(-pid)` per fermare il gruppo (`src/supervisor/process.ts`, `src/core/engine.ts` righe ~451, ~3457, ~4362, `src/core/ibrida.ts`). Su Windows i gruppi non esistono: `taskkill /T /F /PID`. Riconoscimento dei processi (`ps`, `lsof`, `identificaGruppo`, `fermaProcessiNellaCartella`): `Get-CimInstance Win32_Process` o `tasklist`.
