@@ -10,7 +10,12 @@ export function scegliFile(): Promise<string[]> {
     "$f=New-Object System.Windows.Forms.OpenFileDialog",
     "$f.Multiselect=$true",
     "$f.Title='Allega a Continuity'",
-    "if($f.ShowDialog() -eq 'OK'){$f.FileNames -join \"`n\"}",
+    // Aperta da un programma in sottofondo, Windows la metterebbe dietro il
+    // terminale: una finestra invisibile «sempre davanti» le fa da padre.
+    "$p=New-Object System.Windows.Forms.Form -Property @{TopMost=$true;ShowInTaskbar=$false;Opacity=0}",
+    "$p.Show();$p.Activate()",
+    "$r=$f.ShowDialog($p);$p.Close()",
+    "if($r -eq 'OK'){$f.FileNames -join \"`n\"}",
   ].join(";");
   return new Promise((risolvi) =>
     execFile(

@@ -13,6 +13,7 @@ import {
 } from "solid-js";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid";
 import { execFileSync, spawnSync } from "node:child_process";
+import { homedir } from "node:os";
 import { LIMITE_RICHIESTA } from "../core/limiti.js";
 import { finisceConDomanda } from "../cli/session.js";
 import {
@@ -38,7 +39,7 @@ import { logo } from "./logo.js";
 import { fotogramma } from "./rotella.js";
 import { modelloPredefinito } from "./modelli.js";
 import { compitoDalTesto, nomeLocale, type ConfigIbrida } from "../core/ibrida.js";
-import { fileFuoriProgetto, scegliDalFinder, soloFileTrascinati } from "./allegati.js";
+import { fileFuoriProgetto, nomeFile, scegliDalFinder, soloFileTrascinati } from "./allegati.js";
 import { providerNoto } from "../core/provider.js";
 import { Avvisi, Domanda, Scelta, type Avviso, type Voce } from "./dialoghi.js";
 import { coloreAI, tema } from "./tema.js";
@@ -144,7 +145,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
     for (const percorso of percorsi) {
       try {
         await props.api(`/runs/${props.id}/attachments`, { path: percorso });
-        avvisa("ok", `Allegato: ${percorso.split("/").pop()}`, 3000);
+        avvisa("ok", `Allegato: ${nomeFile(percorso)}`, 3000);
       } catch (e) {
         avvisa("errore", messaggio(e), 6000);
       }
@@ -478,7 +479,9 @@ export function App(props: Opzioni & { onEsci: () => void }) {
       ]);
     setInTurno(false);
     // Codex non può chiedere a metà turno: lo strumento è stato bloccato, e
-    // si chiede adesso se consentirlo per il turno dopo.
+    // si chiede adesso se consentirlo per il turno dopo. La sessione si
+    // rilegge prima: una lettura vecchia non deve far saltare la domanda.
+    if (fine === "turn.completed") await aggiorna().catch(() => {});
     const negati: string[] = fine === "turn.completed" ? (run().permessiNegati ?? []) : [];
     if (negati.length && !chiusa) {
       const v = await contesto.scegli<boolean>(
@@ -992,7 +995,7 @@ export function App(props: Opzioni & { onEsci: () => void }) {
       .filter((r) => r.trim());
   // La barra laterale solo oltre 120 colonne, come opencode (confronto, A2).
   const conBarra = () => !casa() && dim().width > 120;
-  const nomeCartella = () => props.cartella.split("/").filter(Boolean).pop() ?? props.cartella;
+  const nomeCartella = () => nomeFile(props.cartella);
   // Il titolo della scheda: la prima richiesta, accorciata, o la cartella.
   const titoloSessione = () => {
     const prima = conv().elementi.find((x) => x.tipo === "richiesta") as any;
@@ -1001,6 +1004,11 @@ export function App(props: Opzioni & { onEsci: () => void }) {
   };
   // A destra il consumo; la quota sta nella barra laterale e negli avvisi, e
   // sotto le 100 colonne cede il posto alla cartella (confronto, M1).
+  const versionePiede = () => (!casa() && !conBarra() && dim().width >= 100 ? versioneApp() : undefined);
+  const scorciatoiePiede = (): [string, string][] =>
+    ibrida()?.config.attiva && ibrida()?.config.aComando && dim().width >= 100
+      ? [["shift+tab", lingua() === "en" ? "Hybrid AI" : "AI ibrida"], ["ctrl+p", lingua() === "en" ? "commands" : "comandi"]]
+      : [["ctrl+p", lingua() === "en" ? "commands" : "comandi"]];
   const destraPiede = () =>
     [consumo(), dim().width >= 100 ? quota() : "", coda().length ? `${coda().length} in coda` : ""]
       .filter(Boolean)
@@ -1092,16 +1100,27 @@ export function App(props: Opzioni & { onEsci: () => void }) {
         sinistra={
           inTurno()
             ? `${nomeAI(ai())} lavora da ${Math.max(0, Math.round((adesso() - inizioTurno()) / 1000))}s${attivita() ? " · " + attivita() : ""}`
-            : percorsoBreve(props.cartella, casa() ? 48 : Math.max(16, dim().width - destraPiede().length - 26 - ramo.length)) +
-              (ramo && ramo !== "HEAD" ? ":" + ramo : "")
+            : percorsoBreve(
+                props.cartella,
+                casa()
+                  ? 48
+                  : // Lo spazio vero: anche versione e scorciatoie occupano il
+                    // piè. Prima non si contavano e il terminale tagliava la
+                    // fine, cioè il nome del progetto (31 ottobre).
+                    Math.max(
+                      16,
+                      dim().width -
+                        destraPiede().length -
+                        (versionePiede()?.length ?? 0) -
+                        scorciatoiePiede().reduce((n, [t, s]) => n + t.length + s.length + 4, 0) -
+                        16 -
+                        ramo.length,
+                    ),
+              ) + (ramo && ramo !== "HEAD" ? ":" + ramo : "")
         }
         destra={casa() ? "" : destraPiede()}
-        versione={!casa() && !conBarra() && dim().width >= 100 ? versioneApp() : undefined}
-        scorciatoie={
-          ibrida()?.config.attiva && ibrida()?.config.aComando && dim().width >= 100
-            ? [["shift+tab", lingua() === "en" ? "Hybrid AI" : "AI ibrida"], ["ctrl+p", lingua() === "en" ? "commands" : "comandi"]]
-            : [["ctrl+p", lingua() === "en" ? "commands" : "comandi"]]
-        }
+        versione={versionePiede()}
+        scorciatoie={scorciatoiePiede()}
       />
     </>
   );
@@ -1315,20 +1334,22 @@ export function compatto(n: number) {
 
 // Il percorso nel piè: «~» per la cartella personale, poi si tolgono le
 // cartelle centrali («~/…/progetto»), mai a metà di un nome (confronto, M1).
-export function percorsoBreve(percorso: string, massimo: number) {
-  const casa = process.env.HOME ?? "";
+// Su Windows la cartella personale è in USERPROFILE (non c'è HOME) e le
+// cartelle si separano con «\»: prima il percorso si tagliava a metà di un
+// nome (collaudo del 31 ottobre).
+export function percorsoBreve(percorso: string, massimo: number, casa = homedir()) {
   const p = casa && percorso.startsWith(casa) ? "~" + percorso.slice(casa.length) : percorso;
   if (p.length <= massimo) return p;
-  const parti = p.split("/");
+  const separatore = p.includes("\\") ? "\\" : "/";
+  const parti = p.split(separatore);
   const ultima = parti[parti.length - 1];
   for (let primi = parti.length - 2; primi >= 1; primi--) {
-    const prova = [...parti.slice(0, primi), "…", ultima].join("/");
+    const prova = [...parti.slice(0, primi), "…", ultima].join(separatore);
     if (prova.length <= massimo) return prova;
   }
   return ultima.length <= massimo ? ultima : "…" + ultima.slice(-(massimo - 1));
 }
-export function abbrevia(percorso: string, massimo: number) {
-  const casa = process.env.HOME ?? "";
+export function abbrevia(percorso: string, massimo: number, casa = homedir()) {
   const p = casa && percorso.startsWith(casa) ? "~" + percorso.slice(casa.length) : percorso;
   return p.length <= massimo ? p : "…" + p.slice(-(massimo - 1));
 }

@@ -54,6 +54,17 @@ export function sandboxClaude(): boolean {
   return false;
 }
 
+// Codex su Windows ha una sandbox sua, ma va scelta: senza, in «exec» ogni
+// comando veniva rifiutato («blocked by policy») e l'AI non poteva nemmeno
+// leggere un allegato (prova di Lorenzo del 31 ottobre). «unelevated» non
+// chiede l'amministratore: un token ristretto, che scrive nella copia di
+// lavoro (e nella cartella temporanea, come sul Mac) ma non altrove.
+// Verificato con Codex 0.166: dentro la copia riesce, nei Documenti
+// «Accesso negato».
+export function argomentiSandboxCodex(): string[] {
+  return ["-c", 'windows.sandbox="unelevated"'];
+}
+
 // Windows Terminal e la console di Windows incollano con ctrl+V.
 export function tastoIncolla(): string {
   return "ctrl+V";

@@ -20,7 +20,13 @@ vi.mock("../src/piattaforma.js", async (originale) => ({
   ...(await originale<any>()),
   copiaNegliAppunti: () => true,
 }));
-const { configurazione, configurazioneFatta, proponiConfigurazione } = await import("../src/tui/configura.js");
+const { configurazione, configurazioneFatta, proponiConfigurazione, rimedioInglese } = await import("../src/tui/configura.js");
+
+it("i rimedi che sono frasi hanno la loro versione inglese; i comandi restano come sono", () => {
+  const windows = controllaSistema("windows", sonde(["git", "powershell.exe"])).find((r) => r.id === "chiavi")!;
+  expect(rimedioInglese(windows.rimedio!)).toBe("Windows PowerShell (powershell.exe) must be in the PATH, as it is by default");
+  expect(rimedioInglese("winget install Git.Git")).toBe("winget install Git.Git");
+});
 
 const dirs: string[] = [];
 afterEach(() => {

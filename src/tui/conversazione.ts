@@ -224,7 +224,12 @@ export function applicaEventi(
       case "permission.blocked":
         metti({ tipo: "avviso", testo });
         break;
+      // Un permesso dato: una riga sua. Prima il caso non aveva il suo
+      // «break» e finiva nel revisore («Revisore · Nessun suggerimento» a ogni
+      // comando consentito, collaudo su Windows del 31 ottobre).
       case "permission.granted":
+        metti({ tipo: "info", testo: "✓ " + testo });
+        break;
       // Il revisore (Fase 2).
       case "review.completed": {
         // Il revisore che corregge da solo (28 ottobre): le correzioni fatte.

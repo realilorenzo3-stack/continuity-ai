@@ -68,6 +68,7 @@ async function sessione(
   const p = openProject(project);
   const db = new Store(dati);
   const engine = new Engine(db);
+  engine.identitaPubblicazione = () => ({ nome: "Persona Prova", email: "42+persona@users.noreply.github.com", fonte: "prova" });
   aperti.push({ engine, db });
   const run = await engine.create(
     "Sito",

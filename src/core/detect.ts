@@ -63,10 +63,17 @@ export function detectVerify(root: string): {
 // e quasi certamente non è ciò che la persona intende.
 export function cartellaAdatta(root: string) {
   const casa = homedir();
-  if (root === casa || dirname(root) === root || dentroDi(root, casa))
+  // La radice del disco («/», «C:\») ha il suo motivo: «cartella personale»
+  // confondeva su Windows (collaudo del 31 ottobre).
+  if (dirname(root) === root)
+    return { adatta: false, motivo: "è la radice del disco, non un progetto" };
+  if (root === casa || dentroDi(root, casa))
     return {
       adatta: false,
-      motivo: "è la tua cartella personale, non un progetto",
+      motivo:
+        root === casa
+          ? "è la tua cartella personale, non un progetto"
+          : "contiene la tua cartella personale, non è un progetto",
     };
   let file = 0;
   let byte = 0;

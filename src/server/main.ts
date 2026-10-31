@@ -38,6 +38,7 @@ import {
 } from "../core/project.js";
 import { cartellaDatiPredefinita, infoProcesso, sistema } from "../piattaforma.js";
 import { migraDati } from "../core/migrazioni.js";
+import { memoriaConnettoriSuDisco } from "../adapters/connettori.js";
 const root = resolve(cartellaDatiPredefinita());
 mkdirSync(root, { recursive: true, mode: 0o700 });
 const lock = join(root, "server.lock");
@@ -99,6 +100,8 @@ try {
   } catch {}
   process.exit(5);
 }
+// L'ultimo elenco dei connettori, letto subito dopo un riavvio.
+memoriaConnettoriSuDisco(join(root, "connettori.json"));
 const store = new Store(root),
   engine = new Engine(store),
   app = Fastify({ logger: false, bodyLimit: 32768 });

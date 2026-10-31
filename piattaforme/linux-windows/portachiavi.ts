@@ -18,6 +18,9 @@ type Operazioni = {
   leggi(servizio: string, provider: string): { stato: number; uscita: string; errore: string };
   salva(servizio: string, provider: string, chiave: string): { stato: number; errore: string };
   togli(servizio: string, provider: string): boolean;
+  // I provider con una chiave, in una sola chiamata e senza leggerle
+  // (l'archivio di Windows): undefined se l'archivio non risponde.
+  elenca?(servizio: string): string[] | undefined;
   // Il motivo, in parole semplici, quando l'archivio non risponde.
   nonDisponibile: string;
   // Un motivo più preciso, dal messaggio del programma, se lo si riconosce.
@@ -48,9 +51,22 @@ function portachiaviConOperazioni(cartellaDati: string, op: Operazioni): Portach
     memoria.set(provider, { quando: Date.now(), chiave });
     return chiave;
   };
+  // Chi ha una chiave, se l'archivio lo sa dire in una volta: su Windows ogni
+  // domanda è un PowerShell (circa 0,6 secondi), e /collega ne faceva una per
+  // servizio, 7 secondi a interfaccia ferma (collaudo del 31 ottobre).
+  let elenco: { quando: number; provider: Set<string> } | undefined;
+  const conChiave = () => {
+    if (!op.elenca) return undefined;
+    if (elenco && Date.now() - elenco.quando < DURATA_MEMORIA) return elenco.provider;
+    const trovati = op.elenca(servizio);
+    elenco = trovati ? { quando: Date.now(), provider: new Set(trovati) } : undefined;
+    return elenco?.provider;
+  };
   return {
     leggi,
     esiste(provider) {
+      const tutti = conChiave();
+      if (tutti) return tutti.has(provider);
       try {
         return leggi(provider) !== undefined;
       } catch {
@@ -63,11 +79,13 @@ function portachiaviConOperazioni(cartellaDati: string, op: Operazioni): Portach
       op.togli(servizio, provider);
       const r = op.salva(servizio, provider, chiave);
       memoria.delete(provider);
+      elenco = undefined;
       if (r.stato !== 0)
         throw Error(op.spiega?.(r.errore) ?? `${op.nonDisponibile}${r.errore ? ` (${r.errore.trim().slice(0, 160)})` : ""}`);
     },
     togli(provider) {
       memoria.delete(provider);
+      elenco = undefined;
       return op.togli(servizio, provider);
     },
   };
@@ -108,7 +126,7 @@ export function portachiaviLinux(cartellaDati: string, comando = "secret-tool"):
 const VAULT =
   "[void][Windows.Security.Credentials.PasswordVault,Windows.Security.Credentials,ContentType=WindowsRuntime];$v=New-Object Windows.Security.Credentials.PasswordVault;";
 const stringaPS = (x: string) => "'" + x.replace(/'/g, "''") + "'";
-export function scriptVault(azione: "leggi" | "salva" | "togli" | "togliTutte", servizio: string, provider = ""): string {
+export function scriptVault(azione: "leggi" | "salva" | "togli" | "togliTutte" | "elenca", servizio: string, provider = ""): string {
   const s = stringaPS(servizio);
   const a = stringaPS(provider);
   const corpo = {
@@ -116,6 +134,10 @@ export function scriptVault(azione: "leggi" | "salva" | "togli" | "togliTutte", 
     salva: `$k=[Console]::In.ReadToEnd();try{$v.Remove($v.Retrieve(${s},${a}))}catch{};$v.Add((New-Object Windows.Security.Credentials.PasswordCredential(${s},${a},$k)))`,
     togli: `try{$v.Remove($v.Retrieve(${s},${a}))}catch{exit 44}`,
     togliTutte: `$n=0;try{foreach($c in $v.FindAllByResource(${s})){$v.Remove($c);$n++}}catch{};[Console]::Out.Write($n)`,
+    // Solo i nomi: la chiave non si legge (servirebbe RetrievePassword).
+    // Senza voci FindAllByResource dà un errore: elenco vuoto, uscita 0
+    // (l'errore intercettato lascerebbe l'uscita a 1).
+    elenca: `try{foreach($c in $v.FindAllByResource(${s})){[Console]::Out.Write($c.UserName+"\`n")}}catch{};exit 0`,
   }[azione];
   return VAULT + corpo;
 }
@@ -147,6 +169,11 @@ export function portachiaviWindows(
     },
     togli(servizio, provider) {
       return esegui(scriptVault("togli", servizio, provider)).status === 0;
+    },
+    elenca(servizio) {
+      const r = esegui(scriptVault("elenca", servizio));
+      if (r.error || r.status !== 0) return undefined;
+      return String(r.stdout ?? "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
     },
   });
 }

@@ -14,6 +14,9 @@ import {
   eseguiPubblicazione,
   risolviDestinazione,
   indirizzoWeb,
+  identitaPubblicazione,
+  SENZA_IDENTITA_GITHUB,
+  SENZA_IDENTITA_GIT,
 } from "../src/core/pubblica.js";
 import { openProject } from "../src/core/project.js";
 import { Store } from "../src/persistence/store.js";
@@ -28,6 +31,8 @@ const temp = (n: string) => {
   dirs.push(d);
   return d;
 };
+// Chi firma nelle prove: un'identità scelta qui, non quella della macchina.
+const IO = { nome: "Persona Prova", email: "42+persona@users.noreply.github.com", fonte: "prova" };
 const git = (cwd: string, ...a: string[]) =>
   execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@l", ...a], {
     cwd,
@@ -78,7 +83,7 @@ it("pubblica in un repository vuoto, senza credenziali, dipendenze e file ignora
     "index.html",
   ]);
   expect(a.esclusi).toEqual([".env"]);
-  const esito = eseguiPubblicazione(prep, a, "Continuity: primo invio");
+  const esito = eseguiPubblicazione(prep, a, "Continuity: primo invio", IO);
   expect(esito.commit).toMatch(/^[0-9a-f]{40}$/);
   expect(fileSu(bare).sort()).toEqual([
     ".env.example",
@@ -98,7 +103,7 @@ it("su un repository con file già presenti mostra modificati ed eliminati prima
   expect(a.aggiunti).toEqual(["index.html"]);
   expect(a.modificati).toEqual(["README.md"]);
   expect(a.eliminati).toEqual(["vecchio.txt"]);
-  eseguiPubblicazione(prep, a, "aggiornamento");
+  eseguiPubblicazione(prep, a, "aggiornamento", IO);
   expect(fileSu(bare).sort()).toEqual(["README.md", "index.html"]);
   expect(git(bare, "log", "--format=%s", "main").split("\n")).toEqual([
     "aggiornamento",
@@ -133,6 +138,7 @@ it("dalla sessione: anteprima, segreti bloccati, cartella cambiata = nuova antep
   const p = openProject(root);
   const db = new Store(data);
   const engine = new Engine(db);
+  engine.identitaPubblicazione = () => IO;
   try {
     const run = await engine.create(
       "Sito",
@@ -186,3 +192,62 @@ it("dalla sessione: anteprima, segreti bloccati, cartella cambiata = nuova antep
     db.close();
   }
 }, 60000);
+
+// Segnalazione di Lorenzo del 31 ottobre: i commit pubblicati avevano autore
+// «Continuity <continuity@localhost>» e Vercel Hobby bloccava il deploy.
+it("chi firma i commit pubblicati: l'account GitHub collegato, mai un indirizzo inventato", () => {
+  const account = JSON.stringify({ login: "realilorenzo3-stack", id: 300788351, name: "Lorenzo Reali" });
+  const dip = (risposte: Record<string, { ok: boolean; testo: string }>, config: Record<string, string> = {}) => ({
+    gh: (args: string[]) => risposte[args.join(" ")] ?? { ok: false, testo: "" },
+    gitConfig: (k: string) => config[k] ?? "",
+  });
+  const gh = "https://github.com/u/sito.git";
+  // Senza nome né email in git (il Mac di Lorenzo) e senza il permesso per le
+  // email: il noreply esatto, da ID e login restituiti da GitHub.
+  expect(identitaPubblicazione(gh, dip({ "api user": { ok: true, testo: account } }))).toEqual({
+    nome: "Lorenzo Reali",
+    email: "300788351+realilorenzo3-stack@users.noreply.github.com",
+    fonte: "account GitHub realilorenzo3-stack, indirizzo noreply",
+  });
+  // L'email di git vale solo se GitHub la conferma verificata.
+  const emails = { ok: true, testo: JSON.stringify([{ email: "lr@esempio.it", verified: true }, { email: "vecchia@esempio.it", verified: false }]) };
+  expect(identitaPubblicazione(gh, dip({ "api user": { ok: true, testo: account }, "api user/emails": emails }, { "user.name": "Lorenzo", "user.email": "LR@esempio.it" })).email).toBe("LR@esempio.it");
+  expect(identitaPubblicazione(gh, dip({ "api user": { ok: true, testo: account }, "api user/emails": emails }, { "user.email": "vecchia@esempio.it" })).email).toBe(
+    "300788351+realilorenzo3-stack@users.noreply.github.com",
+  );
+  // Senza login GitHub: ci si ferma e si spiega, anche con un'email in git.
+  expect(() => identitaPubblicazione(gh, dip({}, { "user.name": "X", "user.email": "x@y.z" }))).toThrow(SENZA_IDENTITA_GITHUB);
+  expect(() => identitaPubblicazione("git@github.com:u/sito.git", dip({ "api user": { ok: true, testo: "{}" } }))).toThrow(SENZA_IDENTITA_GITHUB);
+  // Altrove (un altro server, una cartella): l'identità di git, se c'è.
+  expect(identitaPubblicazione("/srv/sito.git", dip({}, { "user.name": "A", "user.email": "a@b.c" })).email).toBe("a@b.c");
+  expect(() => identitaPubblicazione("/srv/sito.git", dip({}, { "user.name": "A", "user.email": "continuity@localhost" }))).toThrow(SENZA_IDENTITA_GIT);
+  expect(() => identitaPubblicazione("/srv/sito.git", dip({}))).toThrow(SENZA_IDENTITA_GIT);
+});
+
+it("autore e committer nel clone sono l'identità scelta, anche con GIT_AUTHOR_* e GIT_COMMITTER_* nell'ambiente; il messaggio resta", () => {
+  const bare = remoto({ "README.md": "x\n" });
+  const root = cartella({ "README.md": "y\n" });
+  const prep = join(temp("prep-"), "p");
+  const a = preparaPubblicazione(root, bare, prep);
+  const prima = { ...process.env };
+  Object.assign(process.env, {
+    GIT_AUTHOR_NAME: "Continuity",
+    GIT_AUTHOR_EMAIL: "continuity@localhost",
+    GIT_COMMITTER_NAME: "Continuity",
+    GIT_COMMITTER_EMAIL: "continuity@localhost",
+  });
+  try {
+    const messaggio = "Continuity: titolo\n\nCodice scritto o controllato con l'aiuto di AI, tramite Continuity: Claude.";
+    eseguiPubblicazione(prep, a, messaggio, IO);
+    expect(git(bare, "log", "-1", "--format=%an <%ae>|%cn <%ce>", "main")).toBe(
+      "Persona Prova <42+persona@users.noreply.github.com>|Persona Prova <42+persona@users.noreply.github.com>",
+    );
+    expect(git(bare, "log", "-1", "--format=%B", "main")).toBe(messaggio);
+    // La cronologia di prima resta: un commit in più, nessuna riscrittura.
+    expect(git(bare, "log", "--format=%s", "main").split("\n")).toEqual(["Continuity: titolo", "iniziale"]);
+  } finally {
+    for (const k of ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"])
+      if (prima[k] === undefined) delete process.env[k];
+      else process.env[k] = prima[k];
+  }
+});

@@ -156,7 +156,15 @@ it("WSL: lo script per l'archivio di Windows ha nome e provider fra apici, e la 
   expect(script).toContain("'o''reilly'");
   expect(script).toContain("[Console]::In.ReadToEnd()");
   expect(Buffer.from(codificaPowerShell(script), "base64").toString("utf16le")).toBe(script);
+  // Chi ha una chiave, tutti in una chiamata: solo i nomi, le chiavi non si
+  // leggono, e senza voci l'uscita è 0 (elenco vuoto, non un errore).
+  const elenca = scriptVault("elenca", "Continuity · dati · 1a2b3c4d");
+  expect(elenca).toContain("FindAllByResource('Continuity · dati · 1a2b3c4d')");
+  expect(elenca).toContain("$c.UserName");
+  expect(elenca).not.toContain("RetrievePassword");
+  expect(elenca).toMatch(/exit 0$/);
 });
+
 
 it.skipIf(suWindows)("WSL: le chiavi nell'archivio di Windows attraverso powershell.exe (finto), con la chiave dallo standard input", () => {
   const base = temp("piatt-ps-");

@@ -33,14 +33,16 @@ function corto(percorso: string, quanto = 30) {
     ? "~" + percorso.slice(homedir().length)
     : percorso;
   if (casa.length <= quanto) return casa;
-  const parti = casa.split("/").filter(Boolean);
+  // Su Windows le cartelle si separano con «\».
+  const separatore = casa.includes("\\") ? "\\" : "/";
+  const parti = casa.split(separatore).filter(Boolean);
   let coda = parti[parti.length - 1] ?? casa;
   for (let i = parti.length - 2; i >= 0; i--) {
-    const prova = parti[i] + "/" + coda;
+    const prova = parti[i] + separatore + coda;
     if (prova.length + 2 > quanto) break;
     coda = prova;
   }
-  return "…/" + coda;
+  return "…" + separatore + coda;
 }
 
 export function schermataIniziale(a: Apertura) {

@@ -16,7 +16,7 @@ import { normalizzaComando } from "../cli/comandi.js";
 import { gruppoDi } from "../cli/collega.js";
 import { provaCollegamento } from "../core/collega.js";
 import { segnaCollegato } from "../core/collegati.js";
-import { parole, scegliDalFinder } from "./allegati.js";
+import { nomeFile, parole, scegliDalFinder } from "./allegati.js";
 import type { Compito, ConfigIbrida } from "../core/ibrida.js";
 import {
   ISTRUZIONI_REVISORE,
@@ -82,7 +82,7 @@ export const COMANDI_TUI: {
   { nome: "/modello", breve: "modello e ragionamento dell'AI", titolo: "Modello e ragionamento", gruppo: "Le AI" },
   { nome: "/ibrida", breve: "il modello sul tuo computer", titolo: "Il modello sul tuo computer", gruppo: "Le AI" },
   { nome: "/revisore", breve: "l'AI che rivede il lavoro e suggerisce", titolo: "Il revisore", gruppo: "Le AI" },
-  { nome: "/permessi", breve: "Claude chiede il permesso o lavora libero", titolo: "Permessi di Claude", gruppo: "Le AI" },
+  { nome: "/permessi", breve: "Claude chiede il permesso o lavora libero; consenti le azioni bloccate", titolo: "Permessi di Claude", gruppo: "Le AI" },
   { nome: "/flusso", breve: "come lavorano le AI: da sola, con un controllo, con un piano", titolo: "Come lavorano le AI", gruppo: "Le AI" },
   { nome: "/connettori", breve: "accendi e spegni i connettori", titolo: "Connettori", gruppo: "Le AI" },
   { nome: "/allega", breve: "aggiungi un file al messaggio", titolo: "Allega un file", gruppo: "Il lavoro" },
@@ -107,7 +107,7 @@ export function vociMenu(): Voce<string>[] {
     "/modello": ["Model and reasoning", "model and reasoning level", "AI", "/model"],
     "/ibrida": ["AI on your computer", "the local model on your computer", "AI", "/hybrid"],
     "/revisore": ["Reviewer", "the AI that reviews work and suggests changes", "AI", "/reviewer"],
-    "/permessi": ["Claude permissions", "Claude asks permission or works freely", "AI", "/permissions"],
+    "/permessi": ["Claude permissions", "Claude asks permission or works freely; allow blocked actions", "AI", "/permissions"],
     "/flusso": ["How AIs work", "solo work, review, or plan", "AI", "/workflow"],
     "/connettori": ["Connectors", "turn connectors on or off", "AI", "/connectors"],
     "/allega": ["Attach a file", "attach a file to the message", "Work", "/attach"],
@@ -223,7 +223,7 @@ export async function eseguiComando(testo: string, c: Contesto): Promise<boolean
         if (!percorsi.length) return true;
         for (const percorso of percorsi) {
           await c.api(`/runs/${c.id}/attachments`, { path: percorso });
-          c.avvisa("ok", `Allegato: ${percorso.split("/").pop()}`);
+          c.avvisa("ok", `Allegato: ${nomeFile(percorso)}`);
         }
         await c.aggiorna();
         return true;
@@ -679,7 +679,21 @@ export async function pannelloPermessi(c: Contesto) {
   const en = lingua() === "en";
   const attuale = leggiModoClaude(c.cartellaDati);
   const sandbox = sandboxClaude();
-  const v = await c.scegli<ModoClaude>(en ? "Claude permissions" : "Permessi di Claude", [
+  // Le azioni che Codex non ha potuto fare nell'ultimo turno: qui si
+  // consentono sempre, anche se la domanda di fine turno non è comparsa
+  // (prova di Lorenzo del 31 ottobre).
+  await c.aggiorna().catch(() => {});
+  const bloccate: string[] = c.inTurno() ? [] : (c.run().permessiNegati ?? []);
+  const v = await c.scegli<ModoClaude | "consenti-bloccate">(en ? "Claude permissions" : "Permessi di Claude", [
+    ...(bloccate.length
+      ? [
+          {
+            nome: en ? "Allow the blocked actions for the next turn" : "Consenti le azioni bloccate, per il prossimo turno",
+            descrizione: bloccate.join(", "),
+            valore: "consenti-bloccate" as const,
+          },
+        ]
+      : []),
     {
       nome: en ? "Ask permission" : "Chiede il permesso",
       descrizione: sandbox
@@ -704,6 +718,22 @@ export async function pannelloPermessi(c: Contesto) {
       : `Nella modalità libera Claude può eseguire qualsiasi comando senza chiedere${sandbox ? " (la sandbox tiene comunque i comandi dentro la copia di lavoro)" : ", e su questo computer non c'è la sandbox: può toccare anche file fuori dal progetto"}. La tua cartella cambia solo alla consegna, e /annulla la rimette com'era.`,
   });
   if (!v || v.valore === attuale) return;
+  if (v.valore === "consenti-bloccate") {
+    try {
+      await c.api(`/runs/${c.id}/permessi-turno`, { consenti: true });
+      await c.aggiorna().catch(() => {});
+      c.avvisa(
+        "ok",
+        en
+          ? `Allowed for the next turn: ${bloccate.join(", ")}. Write what to do, for example “go ahead”.`
+          : `Consentito per il prossimo turno: ${bloccate.join(", ")}. Scrivi cosa fare, per esempio «procedi».`,
+        10000,
+      );
+    } catch (e) {
+      c.avvisa("errore", messaggio(e));
+    }
+    return;
+  }
   salvaModoClaude(c.cartellaDati, v.valore);
   c.avvisa(
     v.valore === "libero" ? "avviso" : "ok",
@@ -1204,6 +1234,18 @@ async function nuovoControllo(c: Contesto) {
 // qualunque AI si scelga, anche gratuita, lavora sui file e diventa la prima
 // della sequenza finché non se ne sceglie un'altra. Il modello si sceglie da
 // solo (il consigliato): cambiarlo è in /modello.
+// Un'AI senza crediti: «senza crediti · torna alle 12:37», oppure «senza
+// credito» per una chiave da ricaricare; undefined se può lavorare.
+export function senzaCrediti(run: any, id: string, adesso = Date.now()): string | undefined {
+  const v = (run?.esauriti ?? {})[id];
+  if (!v) return undefined;
+  const en = lingua() === "en";
+  if (v.credito) return en ? "out of credit" : "senza credito";
+  if (!v.riprendi || Date.parse(v.riprendi) <= adesso) return undefined;
+  const ora = new Date(v.riprendi).toLocaleTimeString(en ? "en-US" : "it-IT", { hour: "2-digit", minute: "2-digit" });
+  return en ? `out of credits · back at ${ora}` : `senza crediti · torna alle ${ora}`;
+}
+
 async function pannelloAI(c: Contesto, argomento: string) {
   const sequenza: string[] = c.run().providers ?? [];
   let scelta = argomento.trim().toLowerCase();
@@ -1217,7 +1259,7 @@ async function pannelloAI(c: Contesto, argomento: string) {
           nome: providerNoto(id)?.nome ?? id,
           valore: id,
           gruppo: "Le tue AI",
-          tasto: i === 0 && !c.run().risponde ? "● lavora" : "",
+          tasto: senzaCrediti(c.run(), id) ?? (i === 0 && !c.run().risponde ? "● lavora" : ""),
           attuale: i === 0 && !c.run().risponde,
         })),
         { nome: "+ Aggiungi un'AI…", valore: "collega", gruppo: "Altre" },
@@ -1238,7 +1280,20 @@ async function pannelloAI(c: Contesto, argomento: string) {
     // Chi rispondeva soltanto (sessioni di prima del 28 ottobre) lascia il posto.
     if (c.run().risponde) await c.api(`/runs/${c.id}/risponde`, { provider: null });
     if (sequenza[0] !== scelta) await c.api(`/runs/${c.id}/providers`, { richiesta: scelta });
-    c.avvisa("ok", `Da ora lavora ${providerNoto(scelta)?.nome ?? scelta}`, 4000);
+    const nome = providerNoto(scelta)?.nome ?? scelta;
+    const esaurita = senzaCrediti(c.run(), scelta);
+    if (esaurita) {
+      // Scelta lo stesso: torna a lavorare da sola quando si ricarica. Fino ad
+      // allora i messaggi li fa la successiva della sequenza, e lo si dice.
+      const en = lingua() === "en";
+      c.avvisa(
+        "avviso",
+        en
+          ? `${nome} is ${esaurita}: until then the next AI in the sequence works. Not a fault.`
+          : `${nome} è ${esaurita}: fino ad allora lavora la successiva della sequenza. Non è un guasto.`,
+        12000,
+      );
+    } else c.avvisa("ok", `Da ora lavora ${nome}`, 4000);
   } catch (e) {
     c.avvisa("errore", messaggio(e), 8000);
   }

@@ -26,6 +26,15 @@ const ev = (seq: number, type: string, message = "", extra: Partial<Evento> = {}
 // Una cartella temporanea per le preferenze di lingua dei test.
 const DATI_LINGUA = mkdtempSync(join(tmpdir(), "continuity-lingua-"));
 
+it("un permesso dato è una riga sua, non una revisione (collaudo su Windows del 31 ottobre)", () => {
+  const s = applicaEventi(nuovaConversazione(), [
+    ev(1, "permission.requested", "claude chiede il permesso per un comando"),
+    ev(2, "permission.granted", "un comando · node test.mjs: consentito da te", { source: "claude" }),
+  ]);
+  expect(s.elementi.map((e) => e.tipo)).toEqual(["avviso", "info"]);
+  expect(s.elementi[1]).toEqual({ tipo: "info", testo: "✓ un comando · node test.mjs: consentito da te" });
+});
+
 it("la conversazione nasce dagli eventi, ognuno col suo tipo", () => {
   const s = applicaEventi(nuovaConversazione(), [
     ev(1, "user.request", "Correggi il test"),

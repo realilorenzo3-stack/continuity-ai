@@ -11,6 +11,7 @@ import { dentroDi } from "../core/percorsi.js";
 import { sistema } from "../piattaforma.js";
 import { scegliFile as scegliFileMac } from "../../piattaforme/macos/allegati.js";
 import { scegliFile as scegliFileLinux } from "../../piattaforme/linux-windows/allegati.js";
+import { scegliFile as scegliFileWindows } from "../../piattaforme/windows/allegati.js";
 
 // Le parole di un testo come le scrive il Terminale trascinando file: apici
 // singoli o doppi, oppure spazi e caratteri speciali preceduti da «\». Su
@@ -79,7 +80,13 @@ export function fileFuoriProgetto(testo: string, progetto: string): string[] {
 }
 
 // La finestra del sistema per scegliere uno o più file (Finder sul Mac,
-// zenity su Linux): in piattaforme/<sistema>/allegati.ts.
-export function scegliDalFinder(): Promise<string[]> {
-  return sistema() === "mac" ? scegliFileMac() : scegliFileLinux();
+// zenity su Linux, «Apri» su Windows): in piattaforme/<sistema>/allegati.ts.
+// Su Windows prima partiva zenity, che non c'è: /allega non faceva nulla.
+export function scegliDalFinder(s = sistema()): Promise<string[]> {
+  return s === "mac" ? scegliFileMac() : s === "windows" ? scegliFileWindows() : scegliFileLinux();
+}
+
+// Il nome del file di un percorso, con «/» o «\».
+export function nomeFile(percorso: string): string {
+  return percorso.split(/[\\/]/).filter(Boolean).pop() ?? percorso;
 }

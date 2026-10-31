@@ -193,7 +193,7 @@ it("un file trascinato dal Finder diventa un allegato, con la × per toglierlo",
   const allegati: string[] = [];
   const base = servizio();
   const api = async (percorso: string, corpo?: any) => {
-    if (percorso === "/runs/x/attachments") allegati.push(corpo.path.split("/").pop());
+    if (percorso === "/runs/x/attachments") allegati.push(corpo.path.split(/[\\/]/).pop());
     if (percorso === "/runs/x/attachments/remove") allegati.splice(allegati.indexOf(corpo.nome), 1);
     const r = await base.api(percorso, corpo);
     return percorso === "/runs/x" ? { ...r, allegati: [...allegati] } : r;

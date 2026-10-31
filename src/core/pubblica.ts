@@ -50,7 +50,7 @@ const MAI = new Set([
 // Git con la configurazione della persona (serve il suo login, cioè il suo
 // «credential helper»), ma senza hook né fsmonitor: nessun comando scelto da
 // un file del progetto viene eseguito.
-function git(cwd: string, args: string[], input?: string) {
+function git(cwd: string, args: string[], input?: string, ambiente: NodeJS.ProcessEnv = {}) {
   return execFileSync(
     "git",
     ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...args],
@@ -59,7 +59,7 @@ function git(cwd: string, args: string[], input?: string) {
       input,
       encoding: "utf8",
       maxBuffer: 256 * 1024 * 1024,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      env: { ...process.env, ...ambiente, GIT_TERMINAL_PROMPT: "0" },
       stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     },
   ).trim();
@@ -239,12 +239,79 @@ export function preparaPubblicazione(
   };
 }
 
+// Chi firma il commit pubblicato. Prima c'era «Continuity
+// <continuity@localhost>» quando git non aveva un nome: GitHub non lo lega a
+// nessun account e Vercel Hobby blocca il deploy (segnalazione di Lorenzo del
+// 31 ottobre). Per GitHub vale l'account collegato con gh: l'email di git
+// solo se GitHub la conferma verificata per quell'account, altrimenti il suo
+// indirizzo noreply esatto, «ID+login@users.noreply.github.com», costruito
+// con l'ID e il login che GitHub stesso restituisce. Nessun indirizzo
+// inventato: senza identità ci si ferma e si spiega come configurarla.
+export type Identita = { nome: string; email: string; fonte: string };
+
+export type DipendenzeIdentita = {
+  gh: (args: string[]) => { ok: boolean; testo: string };
+  gitConfig: (chiave: string) => string;
+};
+
+const dipendenzeVere: DipendenzeIdentita = {
+  gh(args) {
+    const r = spawnSync("gh", args, { encoding: "utf8", timeout: 20_000, env: process.env });
+    return { ok: r.status === 0 && !r.error, testo: r.stdout ?? "" };
+  },
+  gitConfig(chiave) {
+    const r = spawnSync("git", ["config", "--get", chiave], { encoding: "utf8", timeout: 10_000 });
+    return r.status === 0 ? (r.stdout ?? "").trim() : "";
+  },
+};
+
+export const SENZA_IDENTITA_GITHUB =
+  "Per pubblicare serve sapere chi sei su GitHub, così i commit portano il tuo nome e il tuo account. Collega GitHub una volta con «gh auth login» nel terminale, poi riprova /pubblica.";
+export const SENZA_IDENTITA_GIT =
+  "Per pubblicare serve la tua identità Git. Impostala una volta nel terminale con «git config --global user.name \"Il tuo nome\"» e «git config --global user.email tua@email», poi riprova /pubblica.";
+
+export function identitaPubblicazione(
+  destinazione: string,
+  dipendenze: DipendenzeIdentita = dipendenzeVere,
+): Identita {
+  const nomeGit = dipendenze.gitConfig("user.name");
+  const emailGit = dipendenze.gitConfig("user.email");
+  if (!/github\.com[:/]/i.test(destinazione)) {
+    if (nomeGit && emailGit && !/@localhost$/i.test(emailGit))
+      return { nome: nomeGit, email: emailGit, fonte: "configurazione di git" };
+    throw Error(SENZA_IDENTITA_GIT);
+  }
+  const utente = dipendenze.gh(["api", "user"]);
+  let account: { login?: string; id?: number; name?: string | null } = {};
+  try {
+    account = utente.ok ? JSON.parse(utente.testo) : {};
+  } catch {}
+  if (!account.login || !Number.isInteger(account.id)) throw Error(SENZA_IDENTITA_GITHUB);
+  const nome = nomeGit || account.name?.trim() || account.login;
+  // Le email verificate si leggono solo se gh ha il permesso «user:email»;
+  // senza, vale il noreply, che non ne ha bisogno.
+  if (emailGit) {
+    const email = dipendenze.gh(["api", "user/emails"]);
+    try {
+      const elenco: { email?: string; verified?: boolean }[] = email.ok ? JSON.parse(email.testo) : [];
+      if (elenco.some((x) => x.verified && x.email?.toLowerCase() === emailGit.toLowerCase()))
+        return { nome, email: emailGit, fonte: `account GitHub ${account.login}, email verificata` };
+    } catch {}
+  }
+  return {
+    nome,
+    email: `${account.id}+${account.login}@users.noreply.github.com`,
+    fonte: `account GitHub ${account.login}, indirizzo noreply`,
+  };
+}
+
 // Commit e push dalla cartella preparata. Mai forzando: se su GitHub nel
 // frattempo è arrivato altro, il push viene rifiutato e lo si dice.
 export function eseguiPubblicazione(
   cartella: string,
   anteprima: Anteprima,
   messaggio: string,
+  identita: Identita = identitaPubblicazione(anteprima.destinazione),
 ) {
   if (
     !anteprima.aggiunti.length &&
@@ -252,19 +319,22 @@ export function eseguiPubblicazione(
     !anteprima.eliminati.length
   )
     return { commit: undefined, gia: true };
-  const nome = (() => {
-    try {
-      return git(cartella, ["config", "user.name"]);
-    } catch {
-      return "";
-    }
-  })();
-  const identita = nome
-    ? []
-    : ["-c", "user.name=Continuity", "-c", "user.email=continuity@localhost"];
   if (anteprima.vuotoSuGithub)
     git(cartella, ["checkout", "-q", "-b", anteprima.ramo]);
-  git(cartella, [...identita, "commit", "-q", "-m", messaggio]);
+  // Autore e committer insieme, anche sopra variabili GIT_AUTHOR_* o
+  // GIT_COMMITTER_* rimaste nell'ambiente.
+  git(cartella, ["-c", `user.name=${identita.nome}`, "-c", `user.email=${identita.email}`, "commit", "-q", "-m", messaggio], undefined, {
+    GIT_AUTHOR_NAME: identita.nome,
+    GIT_AUTHOR_EMAIL: identita.email,
+    GIT_COMMITTER_NAME: identita.nome,
+    GIT_COMMITTER_EMAIL: identita.email,
+  });
+  // Si controlla nel clone, prima del push: se non torna, non parte nulla.
+  const [an, ae, cn, ce] = git(cartella, ["log", "-1", "--format=%an%x00%ae%x00%cn%x00%ce"]).split("\u0000");
+  if (an !== identita.nome || ae !== identita.email || cn !== identita.nome || ce !== identita.email)
+    throw Error(
+      `Il commit non porta la tua identità (autore ${an} <${ae}>, committer ${cn} <${ce}>): non ho pubblicato nulla.`,
+    );
   try {
     git(cartella, ["push", "origin", `HEAD:refs/heads/${anteprima.ramo}`]);
   } catch (e) {

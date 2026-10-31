@@ -86,6 +86,7 @@ import {
 } from "./agenti.js";
 import {
   eseguiPubblicazione,
+  identitaPubblicazione,
   indirizzoWeb,
   preparaPubblicazione,
   risolviDestinazione,
@@ -398,7 +399,23 @@ const daConsegnare = (percorso: string) =>
       .split("/")
       .some((parte) => parte !== "allegati" && FUORI_CONSEGNA.includes(parte))
   );
-const terminal = ["SUCCEEDED", "CANCELLED", "FAILED"];
+// I file di «git status --porcelain=v1 -z»: «XY nome», separati da \0; un
+// file rinominato o copiato ha dopo di sé il nome vecchio, che si salta.
+// Senza -z Git metteva fra virgolette i nomi con spazi o accenti, e
+// «"allegati/nota prova.txt"» sfuggiva a daConsegnare (collaudo su Windows
+// del 31 ottobre).
+export function nomiDaStato(uscita: string): string[] {
+  const voci = uscita.split("\0");
+  const nomi: string[] = [];
+  for (let i = 0; i < voci.length; i++) {
+    const voce = voci[i];
+    if (voce.length < 4) continue;
+    nomi.push(voce.slice(3));
+    if (voce[0] === "R" || voce[0] === "C") i++;
+  }
+  return nomi;
+}
+const terminal =["SUCCEEDED", "CANCELLED", "FAILED"];
 const attive = [
   "STARTING",
   "RUNNING",
@@ -473,6 +490,9 @@ export class Engine {
     // Durante un turno risponde chi lavora: il valore salvato prima poteva
     // essere vecchio, e l'interfaccia scriveva «Codex sta lavorando» mentre
     // lavorava Claude (prova di Lorenzo del 19 ottobre).
+    // Le azioni bloccate dell'ultimo turno, a turno finito.
+    if (r.session && !this.children.has(id) && !["STARTING", "RUNNING", "QUIESCING"].includes(r.state))
+      r.permessiNegati = this.azioniBloccate(r);
     if (r.session)
       r.prossimo = this.children.has(id) || ["STARTING", "RUNNING", "QUIESCING"].includes(r.state)
         ? r.agent
@@ -601,8 +621,29 @@ export class Engine {
       : project
         ? project.head
         : git(["rev-parse", "HEAD"]);
-    if (!project?.senzaGit)
-      git(["worktree", "add", "-b", "continuity/" + id, work, base]);
+    if (!project?.senzaGit) {
+      // Se Git crea il ramo ma non la copia (un file che non si può scrivere,
+      // per esempio), il ramo restava nel repository della persona (collaudo
+      // su Windows del 31 ottobre): lo si toglie, e l'errore si dice in chiaro.
+      try {
+        git(["worktree", "add", "-b", "continuity/" + id, work, base]);
+      } catch (e) {
+        try {
+          git(["worktree", "prune"]);
+        } catch {}
+        try {
+          git(["branch", "-D", "continuity/" + id]);
+        } catch {}
+        const righe = String((e as any)?.stderr ?? (e as Error)?.message ?? e)
+          .split(/\r?\n/)
+          .filter((r) => /^(fatal|error):/.test(r.trim()));
+        throw Error(
+          "Non riesco a preparare la copia di lavoro del progetto" +
+            (righe.length ? `: ${righe[0].trim().slice(0, 300)}` : "") +
+            ". Il tuo progetto non è stato toccato.",
+        );
+      }
+    }
     // Uncommitted work is what the person is actually looking at: the agent must
     // see it too, or it would be working on a version that exists nowhere.
     // Se qualcosa va storto qui, il ramo e il worktree appena creati nel
@@ -2581,6 +2622,9 @@ export class Engine {
     r.permessoAttivo = r.permessoTurno;
     r.permessoTurno = undefined;
     r.permessiNegati = [];
+    // Da qui comincia il turno nel registro: le azioni bloccate si ritrovano
+    // anche dagli eventi (azioniBloccate).
+    r.seqInizioTurno = r.version ?? 0;
     // Un turno nuovo cambia la copia: ciò che /annulla aveva messo da parte
     // non si rimette più sopra il lavoro nuovo.
     r.rifacibile = undefined;
@@ -2618,7 +2662,24 @@ export class Engine {
       r.agent = scelto;
       preferito = undefined;
     }
-    if (preferito && preferito !== r.agent) {
+    // Le AI saltate perché senza crediti, prima di quella che lavora: lo si
+    // dice anche quando chi lavora non cambia. Prima Codex esaurito veniva
+    // saltato in silenzio e sembrava un guasto (Lorenzo, 31 ottobre).
+    const saltate = preferito
+      ? ((r.providers ?? []) as string[])
+          .slice(0, (r.providers ?? []).indexOf(preferito))
+          .filter((p) => r.esauriti?.[p] && !this.disponibile(r, p))
+      : [];
+    if (preferito && saltate.length) {
+      const quando = (p: string) => {
+        const v = r.esauriti[p];
+        if (v.credito) return `${p} è senza credito`;
+        const ora = new Date(v.riprendi).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        return `${p} ha esaurito i crediti dell'abbonamento (torna alle ${ora})`;
+      };
+      this.event(r, "switch.started", `${saltate.map(quando).join(" · ")} · questo turno lo fa ${preferito}`);
+      r.agent = preferito;
+    } else if (preferito && preferito !== r.agent) {
       this.event(
         r,
         "switch.started",
@@ -3783,6 +3844,9 @@ export class Engine {
     );
     return this.impostazioneGithub(id);
   }
+  // Chi firma i commit pubblicati (src/core/pubblica.ts); le prove la
+  // sostituiscono.
+  identitaPubblicazione = identitaPubblicazione;
   // /pubblica, prima fase: che cosa cambierebbe su GitHub. Nessuna scrittura
   // sul remoto e nessuna nella cartella della persona.
   anteprimaPubblicazione(id: string, destinazione?: string) {
@@ -3798,6 +3862,8 @@ export class Engine {
       throw Error(
         "Dimmi dove pubblicare: /pubblica utente/repository (per esempio /pubblica tuonome/sito)",
       );
+    // Senza un'identità GitHub ci si ferma qui, prima della conferma.
+    this.identitaPubblicazione(dest);
     const anteprima = preparaPubblicazione(
       r.project.root,
       dest,
@@ -3850,6 +3916,7 @@ export class Engine {
       cartella,
       fresca,
       (titolo ? `Continuity: ${titolo}` : "Aggiornamento da Continuity") + conAI,
+      this.identitaPubblicazione(fresca.destinazione),
     );
     rmSync(cartella, { recursive: true, force: true });
     r.anteprimaPubblicazione = undefined;
@@ -4289,7 +4356,7 @@ export class Engine {
           this.event(
             attuale,
             "permission.blocked",
-            `${r.agent} voleva usare ${e.text}: bloccato finché non lo consenti`,
+            `${r.agent} voleva usare ${e.text}: bloccato finché non lo consenti (a fine turno, o con /permessi)`,
             r.agent,
           );
           return;
@@ -4945,12 +5012,22 @@ export class Engine {
     try {
       const out = execFileSync(
         "git",
-        ["-c", "core.hooksPath=/dev/null", "diff", "--numstat", "HEAD"],
+        ["-c", "core.hooksPath=/dev/null", "diff", "--numstat", "-z", "HEAD"],
         { cwd: r.work, encoding: "utf8", timeout: 30000, maxBuffer: 4 * 1024 * 1024, env },
       );
-      for (const riga of out.split("\n").filter(Boolean)) {
-        const [piu, meno, ...nome] = riga.split("\t");
-        fuori[nome.join("\t")] = { piu: Number(piu) || 0, meno: Number(meno) || 0 };
+      // Con -z i nomi arrivano come sono (senza virgolette per spazi e
+      // accenti); un file rinominato ha il nome vuoto, seguito da vecchio e
+      // nuovo nome.
+      const voci = out.split("\0");
+      for (let i = 0; i < voci.length; i++) {
+        if (!voci[i]) continue;
+        const [piu, meno, ...resto] = voci[i].split("\t");
+        let nome = resto.join("\t");
+        if (!nome) {
+          nome = voci[i + 2] ?? "";
+          i += 2;
+        }
+        if (nome) fuori[nome] = { piu: Number(piu) || 0, meno: Number(meno) || 0 };
       }
     } catch {}
     for (const file of this.changedFiles(r)) {
@@ -4975,6 +5052,7 @@ export class Engine {
           "core.hooksPath=/dev/null",
           "status",
           "--porcelain=v1",
+          "-z",
           "--untracked-files=all",
         ],
         {
@@ -4985,10 +5063,7 @@ export class Engine {
           env: ambienteGit(r.work),
         },
       );
-      return out
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => line.slice(3).trim())
+      return nomiDaStato(out)
         .concat(
           r.project
             ? ignoratiDaConsegnare(r.work, r.project.root, daConsegnare)
@@ -5339,11 +5414,26 @@ export class Engine {
     for (const p of [...this.permessiInAttesa.values()])
       if (p.run === runId) (p.risolvi as any)(false, perché);
   }
+  // Le azioni bloccate nell'ultimo turno di Codex e non ancora decise. Il
+  // campo del turno, oppure gli eventi «permission.blocked» dall'inizio del
+  // turno, finché non arriva un sì o un no: il registro c'è sempre (prova di
+  // Lorenzo del 31 ottobre, avviso visibile ma nessun modo di consentire).
+  azioniBloccate(r: any): string[] {
+    if (r.permessiNegati?.length) return r.permessiNegati;
+    if (r.seqInizioTurno === undefined) return [];
+    const bloccate: string[] = [];
+    for (const e of this.store.events(r.id, r.seqInizioTurno)) {
+      if (e.type === "permission.granted" || e.type === "permission.denied") bloccate.length = 0;
+      const m = e.type === "permission.blocked" ? / voleva usare (.+?): bloccato finché non lo consenti/.exec(String(e.payload?.message ?? "")) : null;
+      if (m && !bloccate.includes(m[1])) bloccate.push(m[1]);
+    }
+    return bloccate;
+  }
   // Codex: uno strumento bloccato nel turno, consentito dalla persona per il
   // turno dopo («sì, pubblica»).
   consentiProssimoTurno(runId: string, consenti: boolean) {
     const r = this.run(runId);
-    const negati: string[] = r.permessiNegati ?? [];
+    const negati: string[] = this.azioniBloccate(r);
     if (!negati.length) throw Error("Nessuna azione bloccata da consentire");
     r.permessiNegati = [];
     if (consenti) r.permessoTurno = { ai: r.agent, strumenti: negati };

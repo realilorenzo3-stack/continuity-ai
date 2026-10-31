@@ -130,11 +130,25 @@ it("quota esaurita: passa al provider successivo, conserva il filo e fa lavorare
     expect(tipi).toContain("turn.started");
     expect(tipi).toContain("switch.started");
     expect(tipi).toContain("turn.completed");
+    // Il turno dopo lavora ancora Claude, ma Codex saltato lo si dice: senza
+    // la riga sembrava un guasto (Lorenzo, 31 ottobre).
+    const prima = db.events(run.id).length;
+    await engine.turn(run.id, "Aggiungi un commento");
+    // Su Windows, con le altre prove in parallelo, il turno e le verifiche
+    // superano a volte i 15 secondi.
+    await vi.waitFor(() => expect(engine.run(run.id).state).toBe("PAUSED"), {
+      timeout: 40000,
+    });
+    const nuovi = db.events(run.id).slice(prima);
+    const passaggio = nuovi.find((e: any) => e.type === "switch.started");
+    expect(passaggio?.payload.message).toMatch(
+      /^codex ha esaurito i crediti dell'abbonamento \(torna alle \d\d:\d\d\) · questo turno lo fa claude$/,
+    );
   } finally {
     await engine.shutdown();
     db.close();
   }
-}, 40000);
+}, 90000);
 
 it("senza altri provider nella rotazione il turno si ferma e lo dice", async () => {
   const { engine, db, run } = await sessione(["codex"]);

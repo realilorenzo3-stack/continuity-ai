@@ -1,7 +1,7 @@
 import { istruzioneLingua, LINGUA_PREDEFINITA, type Lingua } from "../core/lingua.js";
 import { fileURLToPath } from "node:url";
 import type { Connettore } from "./connettori.js";
-import { variabiliDiSistema } from "../piattaforma.js";
+import { argomentiSandboxCodex, variabiliDiSistema } from "../piattaforma.js";
 import {
   agentiPerClaude,
   agentiPerCodex,
@@ -509,6 +509,8 @@ export function liveCommand(
             .flatMap((c) => c.disattiva!.flatMap((d) => ["-c", d]))
         : []),
       "--ignore-rules",
+      // Su Windows la sandbox di Codex va scelta, o rifiuta ogni comando.
+      ...argomentiSandboxCodex(),
       "--json",
       ...(modello ? ["-m", modello] : []),
       ...(progetto
@@ -1073,6 +1075,21 @@ const FRASI_QUOTA = new RegExp(
 export function creditoEsaurito(text: string) {
   return FRASI_CREDITO.test(text);
 }
+// Il comando di Codex da mostrare, senza la shell che lo avvolge: «/bin/zsh
+// -lc '…'» su Mac e Linux, «"C:\…\powershell.exe" -Command '…'» su Windows
+// (prima a schermo restava solo il percorso di PowerShell, 31 ottobre).
+export function comandoCodex(comando: unknown): string {
+  const c = String(comando ?? "");
+  const unix = /^\/bin\/\w*sh\s+-lc\s+/.exec(c);
+  const windows = /^"?[^"\s]*powershell(\.exe)?"?\s+(-NoProfile\s+)?-Command\s+/i.exec(c);
+  const dentro = unix ? c.slice(unix[0].length) : windows ? c.slice(windows[0].length) : c;
+  const apice = dentro[0];
+  return (apice === "'" || apice === '"') && dentro.endsWith(apice) && dentro.length > 1
+    ? dentro.slice(1, -1)
+    : unix || windows
+      ? dentro.replace(/^['"]/, "")
+      : dentro;
+}
 export function quotaSuErrore(text: string) {
   return FRASI_QUOTA.test(text);
 }
@@ -1273,7 +1290,7 @@ export function strumentoClaude(nome: unknown, input?: any) {
     case "NotebookEdit":
       return `modifica  ${corto(
         String(input?.notebook_path ?? "")
-          .split("/")
+          .split(/[\\/]/)
           .pop(),
         60,
       )}`;
@@ -1400,11 +1417,7 @@ export function normalizedLiveEvent(
       return {
         type: "attivita",
         text:
-          "esegue  " +
-          String(e.item.command ?? "")
-            .replace(/^\/bin\/\w*sh\s+-lc\s+'?/, "")
-            .replace(/'$/, "")
-            .slice(0, 90),
+          "esegue  " + comandoCodex(e.item.command).slice(0, 90),
       };
     // Il riassunto del ragionamento (model_reasoning_summary="auto"): senza,
     // Codex pensava in silenzio anche per minuti e lo schermo restava fermo
@@ -1414,14 +1427,11 @@ export function normalizedLiveEvent(
       return testo ? { type: "pensiero", text: testo } : { type: "unknown", text: "" };
     }
     if (e.type === "item.completed" && e.item?.type === "command_execution") {
-      const comando = String(e.item.command ?? "")
-        .replace(/^\/bin\/\w*sh\s+-lc\s+'?/, "")
-        .replace(/'$/, "");
-      return { type: "azione", text: "esegue  " + comando.slice(0, 90) };
+      return { type: "azione", text: "esegue  " + comandoCodex(e.item.command).slice(0, 90) };
     }
     if (e.type === "item.completed" && e.item?.type === "file_change") {
       const file = (e.item.changes ?? [])
-        .map((c: any) => String(c.path).split("/").pop())
+        .map((c: any) => String(c.path).split(/[\\/]/).pop())
         .join(", ");
       return { type: "azione", text: "modifica  " + file.slice(0, 90) };
     }
@@ -1535,7 +1545,7 @@ export function normalizedLiveEvent(
       if (viaConnettore)
         return { type: "azione", text: "  ↳ " + viaConnettore };
       const dove = String(uso.input?.file_path ?? uso.input?.pattern ?? "")
-        .split("/")
+        .split(/[\\/]/)
         .pop();
       const altro = strumentoClaude(uso.name, uso.input);
       if (altro) return { type: "azione", text: "  ↳ " + altro };
@@ -1588,7 +1598,7 @@ export function normalizedLiveEvent(
         const percorso = String(
           strumento.input?.file_path ?? strumento.input?.pattern ?? "",
         )
-          .split("/")
+          .split(/[\\/]/)
           .pop();
         const connettore = usoConnettore(strumento.name, strumento.input);
         if (connettore) return { type: "azione", text: connettore };

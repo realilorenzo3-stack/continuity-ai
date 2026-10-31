@@ -78,6 +78,12 @@ export function sandboxClaude(c: (n: string) => boolean): boolean {
   }
 }
 
+// La sandbox di Codex su Linux e WSL (bubblewrap/Landlock) non ha bisogno di
+// impostazioni in più: quelle di Windows nativo sono in piattaforme/windows.
+export function argomentiSandboxCodex(): string[] {
+  return [];
+}
+
 // Nei terminali di Linux e in Windows Terminal.
 export function tastoIncolla(): string {
   return "ctrl+shift+V";

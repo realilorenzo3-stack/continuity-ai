@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { variabiliDiSistema } from "../piattaforma.js";
@@ -179,6 +179,21 @@ let memoria: { quando: number; elenco: Connettore[] } | undefined;
 let inCorso: Promise<Connettore[]> | undefined;
 const DURATA_MEMORIA = 10 * 60 * 1000;
 
+// L'ultimo elenco anche su disco, nella cartella dati: dopo un riavvio del
+// servizio c'è subito, e si rilegge in sottofondo. Prima il primo
+// /connettori (e il primo turno) aspettava «claude mcp list», fino a mezzo
+// minuto (collaudo su Windows del 31 ottobre). Contiene solo nomi e stati.
+let fileMemoria: string | undefined;
+export function memoriaConnettoriSuDisco(file: string) {
+  fileMemoria = file;
+  if (memoria) return;
+  try {
+    const letta = JSON.parse(readFileSync(file, "utf8"));
+    if (Array.isArray(letta?.elenco) && Number.isFinite(letta?.quando))
+      memoria = { quando: letta.quando, elenco: letta.elenco };
+  } catch {}
+}
+
 // Esegue un comando senza bloccare il servizio, e restituisce ciò che scrive
 // anche se esce con un errore (un connettore irraggiungibile non lo è). Niente
 // scritto del tutto vuol dire lettura non riuscita.
@@ -262,6 +277,10 @@ function rileggi(
   )
     .then((parti) => {
       memoria = { quando: Date.now(), elenco: parti.flat() };
+      if (fileMemoria)
+        try {
+          writeFileSync(fileMemoria, JSON.stringify(memoria), { mode: 0o600 });
+        } catch {}
       return memoria.elenco;
     })
     .finally(() => {
@@ -274,4 +293,5 @@ function rileggi(
 export function dimenticaConnettori() {
   memoria = undefined;
   inCorso = undefined;
+  fileMemoria = undefined;
 }

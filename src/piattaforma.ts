@@ -117,6 +117,12 @@ export function sandboxClaude(s: Sistema = sistema(), c = esiste): boolean {
   return s === "mac" ? mac.sandboxClaude() : lw.sandboxClaude(c);
 }
 
+// Le impostazioni della sandbox di Codex proprie del sistema: solo Windows ne
+// ha (piattaforme/windows/sistema.ts); sul Mac e su Linux nessuna.
+export function argomentiSandboxCodex(s: Sistema = sistema()): string[] {
+  return s === "windows" ? win.argomentiSandboxCodex() : [];
+}
+
 // Il tasto per incollare nel terminale.
 export function tastoIncolla(s: Sistema = sistema()): string {
   if (s === "windows") return win.tastoIncolla();

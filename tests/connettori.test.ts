@@ -243,6 +243,29 @@ it("a ogni rilettura entra da solo quello che c'è adesso, per qualsiasi AI", as
   ).toEqual(["claude", "claude"]);
 });
 
+it("dopo un riavvio del servizio l'ultimo elenco è subito lì, dal disco (31 ottobre)", async () => {
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { memoriaConnettoriSuDisco } = await import("../src/adapters/connettori.js");
+  const dati = mkdtempSync(join(tmpdir(), "continuity-connettori-"));
+  try {
+    dimenticaConnettori();
+    memoriaConnettoriSuDisco(join(dati, "connettori.json"));
+    await scopriConnettori({ claude: "/bin/claude" }, true, { claude: async () => [voce("claude", "Gmail")] });
+    // Il servizio riparte: la memoria si perde, il file resta.
+    dimenticaConnettori();
+    memoriaConnettoriSuDisco(join(dati, "connettori.json"));
+    let lettureLente = 0;
+    const lento = { claude: async () => (lettureLente++, new Promise<Connettore[]>(() => {})) };
+    const elenco = await scopriConnettori({ claude: "/bin/claude" }, false, lento);
+    expect(elenco.map((c) => c.id)).toEqual(["claude:Gmail"]);
+    dimenticaConnettori();
+  } finally {
+    rmSync(dati, { recursive: true, force: true });
+  }
+});
+
 it("una lettura in corso è condivisa e un'AI che non risponde tiene l'ultimo elenco", async () => {
   dimenticaConnettori();
   let chiamate = 0;

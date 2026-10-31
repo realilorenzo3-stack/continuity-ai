@@ -88,7 +88,7 @@ export async function configurazione(c: Contesto, dipendenze = { controllaSistem
         // Un rimedio di più righe (il profilo di AppArmor) non si mostra intero.
         descrizione: r.ok
           ? t(r.nota, notaInglese(r))
-          : `${t(r.nota, notaInglese(r))}${r.rimedio ? (r.rimedio.includes("\n") ? ` · ${t("invio copia i comandi", "enter copies the commands")}` : ` · ${t("invio copia", "enter copies")}: ${r.rimedio}`) : ""}`,
+          : `${t(r.nota, notaInglese(r))}${r.rimedio ? (r.rimedio.includes("\n") ? ` · ${t("invio copia i comandi", "enter copies the commands")}` : ` · ${t("invio copia", "enter copies")}: ${t(r.rimedio, rimedioInglese(r.rimedio))}`) : ""}`,
         valore: r,
         gruppo: t("Il tuo sistema", "Your system"),
       })),
@@ -110,7 +110,9 @@ export async function configurazione(c: Contesto, dipendenze = { controllaSistem
       if (requisiti.every((r) => r.ok)) fatti.push(t("sistema controllato", "system checked"));
       break;
     }
-    if (typeof v.valore === "object" && v.valore.rimedio) offri(c, v.valore.rimedio);
+    // Solo ciò che manca: invio su un requisito a posto copiava comunque il
+    // suo rimedio negli appunti (collaudo su Windows del 31 ottobre).
+    if (typeof v.valore === "object" && !v.valore.ok && v.valore.rimedio) offri(c, t(v.valore.rimedio, rimedioInglese(v.valore.rimedio)));
   }
 
   // 3. Codex e Claude Code: installati? collegati? Il login si fa nel loro
@@ -231,6 +233,19 @@ export async function ollamaRaggiungibile(): Promise<boolean> {
 function nomeInglese(r: Requisito) {
   return { git: "Git", chiavi: r.nome.includes("Windows") ? "Windows Credential Manager" : r.nome.includes("Mac") ? "Mac Keychain" : "Linux keyring", sandbox: "Sandbox for Claude Code", apparmor: "Ubuntu allows the sandbox", codex: "Codex program (for free services)" }[r.id];
 }
+// I rimedi che sono frasi, non comandi (l'archivio di Windows nativo e da
+// WSL): i comandi restano come sono.
+export function rimedioInglese(rimedio: string) {
+  return (
+    {
+      "Windows PowerShell (powershell.exe) deve essere nel PATH, come di serie":
+        "Windows PowerShell (powershell.exe) must be in the PATH, as it is by default",
+      "WSL deve poter avviare i programmi di Windows (interoperabilità attiva, come di serie)":
+        "WSL must be able to start Windows programs (interop enabled, as it is by default)",
+    }[rimedio] ?? rimedio
+  );
+}
+
 function notaInglese(r: Requisito) {
   return {
     git: "needed for the working copy and to bring work back to your folder",

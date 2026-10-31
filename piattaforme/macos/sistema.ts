@@ -43,6 +43,12 @@ export function sandboxClaude(): boolean {
   return true;
 }
 
+// La sandbox di Codex sul Mac (Seatbelt) non ha bisogno di impostazioni in
+// più: quelle di Windows sono in piattaforme/windows/sistema.ts.
+export function argomentiSandboxCodex(): string[] {
+  return [];
+}
+
 export function tastoIncolla(): string {
   return "cmd+V";
 }

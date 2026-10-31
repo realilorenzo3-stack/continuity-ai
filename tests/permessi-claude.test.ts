@@ -77,3 +77,30 @@ it("la scelta resta salvata: di serie chiede, poi libero", () => {
   salvaModoClaude(dati, "libero");
   expect(leggiModoClaude(dati)).toBe("libero");
 });
+
+// Prova di Lorenzo del 31 ottobre: l'avviso «bloccato finché non lo consenti»
+// c'era, la domanda di fine turno no. /permessi offre sempre il modo di farlo.
+it("/permessi offre di consentire le azioni che Codex non ha potuto fare nell'ultimo turno", async () => {
+  const { pannelloPermessi } = await import("../src/tui/comandi.js");
+  const chiamate: [string, unknown][] = [];
+  const avvisi: string[] = [];
+  let voci: any[] = [];
+  const c: any = {
+    api: async (p: string, corpo?: unknown) => (chiamate.push([p, corpo]), {}),
+    id: "x",
+    cartellaDati: temp("perm-dati-"),
+    run: () => ({ permessiNegati: ["app: vercel.create_deployment"] }),
+    inTurno: () => false,
+    avvisa: (_t: string, testo: string) => avvisi.push(testo),
+    aggiorna: async () => {},
+    scegli: async (_titolo: string, elenco: any[]) => ((voci = elenco), elenco[0]),
+  };
+  await pannelloPermessi(c);
+  expect(voci[0]).toMatchObject({ nome: "Consenti le azioni bloccate, per il prossimo turno", descrizione: "app: vercel.create_deployment" });
+  expect(chiamate).toEqual([["/runs/x/permessi-turno", { consenti: true }]]);
+  expect(avvisi.at(-1)).toMatch(/Consentito per il prossimo turno: app: vercel\.create_deployment/);
+  // Senza azioni bloccate restano solo le due scelte per Claude.
+  c.run = () => ({});
+  await pannelloPermessi({ ...c, scegli: async (_t: string, elenco: any[]) => ((voci = elenco), undefined) });
+  expect(voci.map((v) => v.valore)).toEqual(["chiedi", "libero"]);
+});

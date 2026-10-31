@@ -524,6 +524,14 @@ try {
         configura: apriConfigurazione,
         proponiConfigurazione: !apriConfigurazione && !configurazioneFatta(root),
       });
+      // La sessione resta nel servizio: qui non c'è altro da fare. Senza
+      // un'uscita esplicita il processo aspettava le richieste ancora in
+      // corso (la rilettura dei connettori dura fino a mezzo minuto) e, su
+      // Windows, l'ingresso del terminale: restava una finestra vuota (31
+      // ottobre). Su Windows la scrittura sul terminale è asincrona: prima si
+      // aspetta che il saluto sia arrivato.
+      await new Promise((ok) => process.stdout.write("", () => ok(undefined)));
+      process.exit(process.exitCode ?? 0);
     } else await runSession(api, run.id, intestazione, lettore, anticipate);
   } else if (command === "demo" || command === "run") {
     const projectPath = value("--project");

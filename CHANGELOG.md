@@ -4,6 +4,12 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0-beta.17 — 2026-10-31
+
+- **Azioni bloccate di Codex: sempre un modo per consentirle.** Quando Codex non può usare un'app o un connettore senza permesso (per esempio un deploy su Vercel), a fine turno Continuity chiede se consentirlo. Se la domanda non compare, `/permessi` offre «Consenti le azioni bloccate, per il prossimo turno», e l'avviso lo dice. Prima poteva restare solo l'avviso, senza modo di rispondere.
+- **Pubblicazione su GitHub con la tua identità.** I commit pubblicati da Continuity portano come autore e committer il tuo account GitHub collegato con `gh`: l'email di git se GitHub la conferma verificata, altrimenti il tuo indirizzo noreply di GitHub. Prima, senza un nome configurato in git, firmavano «Continuity <continuity@localhost>», e servizi come Vercel bloccavano il deploy. Senza un'identità, Continuity si ferma e spiega come configurarla. Il riconoscimento dell'aiuto delle AI resta nel messaggio del commit.
+- **Preparazione per Windows senza WSL** (nel codice comune, ancora non distribuita): su Mac e Linux non cambia nulla di visibile.
+
 ## 2.0.0-beta.16 — 2026-10-31
 
 - **OpenRouter, modelli riservati ad alcuni programmi.** Alcuni modelli gratuiti (per esempio `thinkingmachines/inkling:free`) OpenRouter li dà solo ai programmi della sua lista. Ora Continuity lo spiega in chiaro, segna il modello come non disponibile e propone `/modello`; prima interrompeva il turno con l'errore grezzo, o parlava di chiave rifiutata.

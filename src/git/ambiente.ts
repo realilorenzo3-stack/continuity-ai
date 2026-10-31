@@ -14,6 +14,7 @@
 import { execFileSync } from "node:child_process";
 import { sistema, variabiliDiSistema, type Sistema } from "../piattaforma.js";
 import { autocrlfDiWindows, impostazioniPerWindows, sulDiscoDiWindows } from "../../piattaforme/linux-windows/git.js";
+import { impostazioniGitWindows } from "../../piattaforme/windows/git.js";
 export { impostazioniPerWindows, sulDiscoDiWindows };
 
 const BASE = { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" };
@@ -42,6 +43,8 @@ export function ambienteGit(
   chiedi = { cartellaGitComune, autocrlfDiWindows },
 ): NodeJS.ProcessEnv {
   const ambiente = { ...variabiliDiSistema(), PATH: process.env.PATH, ...BASE };
+  // Windows nativo: i percorsi lunghi (piattaforme/windows/git.ts).
+  if (s === "windows") return { ...ambiente, ...impostazioniGitWindows() };
   if (s !== "wsl" || !cwd) return ambiente;
   let extra = ricordate.get(cwd);
   if (!extra) {

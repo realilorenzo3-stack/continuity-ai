@@ -10,6 +10,9 @@ afterEach(() =>
 it("rifiuta la cartella personale e accetta un progetto normale", () => {
   expect(cartellaAdatta(homedir()).adatta).toBe(false);
   expect(cartellaAdatta(homedir()).motivo).toContain("personale");
+  // La radice del disco ha il suo motivo, su ogni sistema (31 ottobre).
+  const radice = process.platform === "win32" ? "C:\\" : "/";
+  expect(cartellaAdatta(radice).motivo).toBe("è la radice del disco, non un progetto");
   const progetto = mkdtempSync(join(tmpdir(), "continuity-adatta-"));
   dirs.push(progetto);
   writeFileSync(join(progetto, "app.mjs"), "export const a = 1;\n");

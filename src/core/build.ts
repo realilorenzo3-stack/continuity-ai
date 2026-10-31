@@ -84,6 +84,11 @@ export function improntaSorgente(appRoot: string): string | undefined {
   } catch {
     return undefined;
   }
+  // Anche le distribuzioni per sistema: una correzione solo lì (l'archivio
+  // delle chiavi di Windows, 31 ottobre) lasciava acceso il servizio vecchio.
+  try {
+    giro(join(appRoot, "piattaforme"));
+  } catch {}
   if (!voci.length) return undefined;
   const firma = createHash("sha256").update(voci.sort().join("\n")).digest("hex").slice(0, 12);
   return `sorgente-${firma}@${new Date(ultima).toISOString()}`;
