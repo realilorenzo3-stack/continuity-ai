@@ -13,6 +13,18 @@ $Dati = [IO.Path]::GetFullPath($Dati)
 $bin = Join-Path $Dati 'bin'
 $tutto = $Scelta -in '--all', '--tutto'
 
+# I programmi avviati con il Node di questa installazione. Una finestra di
+# Continuity aperta rifà partire il servizio appena lo si ferma e tiene in uso
+# i file: la disinstallazione si fermava a metà (1 novembre, prova da capo
+# della 2.0.0). Prima di toccare qualcosa si chiede di chiuderla.
+$nodeInstallato = Join-Path $Dati 'node\node.exe'
+$processi = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ExecutablePath -and ([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $nodeInstallato) })
+if (@($processi | Where-Object { $_.CommandLine -notmatch 'src[\\/]server[\\/]main\.ts' }).Count -gt 0) {
+  Write-Host 'Continuity è aperto in un''altra finestra: chiudilo (/esci) e ripeti. Non è stato rimosso niente.'
+  exit 1
+}
+
 if ($tutto) {
   # Mai la cartella personale, la radice o AppData stessa.
   $vietate = @($env:USERPROFILE, $env:LOCALAPPDATA, $env:APPDATA, [IO.Path]::GetPathRoot($Dati)) | ForEach-Object { if ($_) { $_.TrimEnd('\') } }
@@ -24,15 +36,10 @@ if ($tutto) {
 }
 
 # Il servizio usa i file del programma: si ferma (anche durante un turno: la
-# persona ha chiesto di disinstallare).
-$servizio = Join-Path $Dati 'service.json'
-if (Test-Path $servizio) {
-  try {
-    $s = Get-Content -Raw $servizio | ConvertFrom-Json
-    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$s.pid)" -ErrorAction SilentlyContinue
-    if ($p -and $p.CommandLine -match 'src[\\/]server[\\/]main\.ts') { & taskkill.exe /T /F /PID ([int]$s.pid) 2>$null | Out-Null; Start-Sleep -Seconds 1 }
-  } catch {}
-}
+# persona ha chiesto di disinstallare), con o senza service.json.
+$servizi = @($processi | Where-Object { $_.CommandLine -match 'src[\\/]server[\\/]main\.ts' })
+foreach ($p in $servizi) { & taskkill.exe /T /F /PID ([int]$p.ProcessId) 2>$null | Out-Null }
+if ($servizi.Count -gt 0) { Start-Sleep -Seconds 2 }
 
 # Le chiavi prima di togliere Node, che serve a calcolarne il nome.
 $chiavi = 0
@@ -62,14 +69,20 @@ $rimossi = @()
 foreach ($voce in 'app', 'app.precedente', 'node') {
   $percorso = Join-Path $Dati $voce
   if (Test-Path $percorso) {
-    try { Remove-Item -Recurse -Force -LiteralPath $percorso; $rimossi += $voce } catch { Write-Host "Non riesco a togliere $percorso (in uso?): chiudi Continuity e ripeti." }
+    # Windows libera i file del servizio appena fermato con qualche istante
+    # di ritardo: si riprova per qualche secondo.
+    for ($i = 0; $i -lt 8 -and (Test-Path $percorso); $i++) {
+      # .NET con «\\?\»: anche i percorsi oltre i 260 caratteri.
+      try { [IO.Directory]::Delete("\\?\$percorso", $true) } catch { Start-Sleep -Seconds 1 }
+    }
+    if (Test-Path $percorso) { Write-Host "Non riesco a togliere $percorso (in uso?): chiudi Continuity e ripeti." } else { $rimossi += $voce }
   }
 }
 Remove-Item -Force -LiteralPath (Join-Path $Dati 'launcher-dir') -ErrorAction SilentlyContinue
 if ($tutto) {
   # Tutto tranne la cartella del comando, che cmd sta ancora leggendo.
   Get-ChildItem -LiteralPath $Dati -Force | Where-Object { $_.Name -ne 'bin' } | ForEach-Object {
-    Remove-Item -Recurse -Force -LiteralPath $_.FullName -ErrorAction SilentlyContinue
+    try { if ($_.PSIsContainer) { [IO.Directory]::Delete("\\?\$($_.FullName)", $true) } else { Remove-Item -Force -LiteralPath $_.FullName } } catch {}
   }
 }
 # Il comando (e con --all la cartella dati) si toglie pochi secondi dopo,

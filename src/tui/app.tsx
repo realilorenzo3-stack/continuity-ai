@@ -351,7 +351,12 @@ export function App(props: Opzioni & { onEsci: () => void }) {
       await aggiorna().catch(() => []);
       if (ultimaFine.seq > daSeq) break;
       const stato = run().state;
-      fermo = ["RUNNING", "STARTING"].includes(stato) ? 0 : fermo + 1;
+      // Si smette di seguire solo con il turno davvero fermo. Anche la
+      // verifica, la fotografia e il passaggio a un'altra AI sono il turno:
+      // prima contava solo RUNNING e STARTING, e con una verifica di più di
+      // un secondo («npm test» su Windows, collaudo della beta.18) il turno
+      // si lasciava prima della sua fine e il lavoro non veniva consegnato.
+      fermo = ["PAUSED", "BLOCKED", "CANCELLED", "FAILED", "SUCCEEDED", "READY"].includes(stato) ? fermo + 1 : 0;
       if (fermo >= 3) break;
       if (stato === "RUNNING") await osservaVivo();
     }

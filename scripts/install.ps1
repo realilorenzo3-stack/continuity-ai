@@ -94,7 +94,11 @@ function Installa-Continuity {
     # istantanei).
     $estratto = Join-Path $lavoro 'estratto'
     New-Item -ItemType Directory -Force -Path $estratto | Out-Null
-    & tar.exe -xzf $pacchetto -C $estratto
+    # Il tar di Windows: quello di Git (se viene prima nel PATH) legge «C:»
+    # come un computer remoto.
+    $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not (Test-Path $tar)) { $tar = 'tar.exe' }
+    & $tar -xzf $pacchetto -C $estratto
     if ($LASTEXITCODE -ne 0) { Write-Host 'Il pacchetto non si apre: installazione interrotta.'; return }
     $radice = Get-ChildItem -LiteralPath $estratto -Directory | Select-Object -First 1
     if (-not $radice -or -not (Test-Path (Join-Path $radice.FullName 'app\src\cli\main.ts')) -or -not (Test-Path (Join-Path $radice.FullName 'node\node.exe'))) {
@@ -113,21 +117,28 @@ function Installa-Continuity {
     $app = Join-Path $dati 'app'
     $precedente = Join-Path $dati 'app.precedente'
     $node = Join-Path $dati 'node'
-    try {
-      if (Test-Path $precedente) { Remove-Item -Recurse -Force -LiteralPath $precedente }
-      if (Test-Path $app) { Rename-Item -LiteralPath $app -NewName 'app.precedente' }
-    } catch {
+    # Windows libera i file di un processo appena fermato con qualche istante
+    # di ritardo: si riprova per una decina di secondi.
+    $spostata = $false
+    for ($i = 0; $i -lt 10 -and -not $spostata; $i++) {
+      try {
+        if (Test-Path $precedente) { Togli-Cartella $precedente }
+        if (Test-Path $app) { Rename-Item -LiteralPath $app -NewName 'app.precedente' }
+        $spostata = $true
+      } catch { Start-Sleep -Seconds 1 }
+    }
+    if (-not $spostata) {
       Write-Host 'Continuity è aperto in un''altra finestra e i suoi file sono in uso: chiudilo (/esci) e ripeti.'
       return
     }
     try {
       Move-Item -LiteralPath (Join-Path $radice.FullName 'app') -Destination $app
-      if (Test-Path $node) { Remove-Item -Recurse -Force -LiteralPath $node }
+      if (Test-Path $node) { Togli-Cartella $node }
       Move-Item -LiteralPath (Join-Path $radice.FullName 'node') -Destination $node
     } catch {
       # Si rimette com'era.
       if (-not (Test-Path (Join-Path $app 'src')) -and (Test-Path $precedente)) {
-        if (Test-Path $app) { Remove-Item -Recurse -Force -LiteralPath $app -ErrorAction SilentlyContinue }
+        if (Test-Path $app) { try { Togli-Cartella $app } catch {} }
         Rename-Item -LiteralPath $precedente -NewName 'app' -ErrorAction SilentlyContinue
       }
       Write-Host "Non riesco a mettere al loro posto i file nuovi ($($_.Exception.Message)). Chiudi Continuity (/esci) e ripeti."
@@ -144,7 +155,7 @@ function Installa-Continuity {
     Set-Content -LiteralPath (Join-Path $dati 'launcher-dir') -Value $bin -Encoding ASCII
     Write-Host "Installato: $bin\continuity.cmd"
   } finally {
-    Remove-Item -Recurse -Force -LiteralPath $lavoro -ErrorAction SilentlyContinue
+    try { Togli-Cartella $lavoro } catch {}
   }
 
   # 6. Git per Windows: serve per la copia di lavoro e per la consegna.
@@ -216,25 +227,51 @@ function Piu-Nuova([string]$a, [string]$b) {
 # Ferma il servizio di Continuity se è acceso e non sta lavorando. $false se
 # un turno è in corso (allora non si installa nulla: i file sono in uso).
 function Ferma-Servizio([string]$dati) {
-  $file = Join-Path $dati 'service.json'
-  if (-not (Test-Path $file)) { return $true }
-  try { $s = Get-Content -Raw $file | ConvertFrom-Json } catch { return $true }
-  try {
-    $stato = Invoke-RestMethod -UseBasicParsing -TimeoutSec 2 -Uri "$($s.origin)/api/v1/health"
-    if ($stato.occupato -eq $true) {
-      Write-Host 'Un turno di Continuity è in corso: aspetta che finisca, poi ripeti. Nulla è stato cambiato.'
-      return $false
-    }
-  } catch {}
-  # Il numero può essere passato a un altro programma (dopo un riavvio): si
-  # ferma solo se è davvero il servizio di Continuity.
-  $p = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$s.pid)" -ErrorAction SilentlyContinue
-  if ($p -and $p.CommandLine -match 'src[\\/]server[\\/]main\.ts') {
-    Write-Host 'Arresto del servizio in esecuzione per applicare l''aggiornamento'
-    & taskkill.exe /T /F /PID ([int]$s.pid) 2>$null | Out-Null
-    Start-Sleep -Seconds 1
+  # Una finestra di Continuity aperta rifà partire il servizio appena lo si
+  # ferma, e tiene in uso i file (1 novembre, prova da capo della 2.0.0):
+  # prima di toccare qualcosa si chiede di chiuderla.
+  $processi = Processi-Continuity $dati
+  if (@($processi | Where-Object { $_.CommandLine -notmatch 'src[\\/]server[\\/]main\.ts' }).Count -gt 0) {
+    Write-Host 'Continuity è aperto in un''altra finestra: chiudilo (/esci) e ripeti. Nulla è stato cambiato.'
+    return $false
   }
+  $file = Join-Path $dati 'service.json'
+  if (Test-Path $file) {
+    try {
+      $s = Get-Content -Raw $file | ConvertFrom-Json
+      $stato = Invoke-RestMethod -UseBasicParsing -TimeoutSec 2 -Uri "$($s.origin)/api/v1/health"
+      if ($stato.occupato -eq $true) {
+        Write-Host 'Un turno di Continuity è in corso: aspetta che finisca, poi ripeti. Nulla è stato cambiato.'
+        return $false
+      }
+    } catch {}
+  }
+  # Il servizio di questa installazione (con o senza service.json): si
+  # riconosce dal suo node.exe, quindi non si ferma mai un altro programma.
+  $servizi = @($processi | Where-Object { $_.CommandLine -match 'src[\\/]server[\\/]main\.ts' })
+  if ($servizi.Count -gt 0) {
+    Write-Host 'Arresto del servizio in esecuzione per applicare l''aggiornamento'
+    foreach ($p in $servizi) { & taskkill.exe /T /F /PID ([int]$p.ProcessId) 2>$null | Out-Null }
+  }
+  # Si aspetta che i processi di questa installazione siano davvero finiti
+  # (una finestra appena chiusa può metterci qualche secondo).
+  for ($i = 0; $i -lt 20 -and (Processi-Continuity $dati).Count -gt 0; $i++) { Start-Sleep -Milliseconds 500 }
   return $true
+}
+
+# Una cartella del programma, anche con percorsi oltre i 260 caratteri
+# (node_modules sotto una cartella dati lunga), che Remove-Item non toglie.
+function Togli-Cartella([string]$percorso) {
+  # .NET con «\\?\» (cmd /c rd riceveva le virgolette rotte da PowerShell 5.1).
+  [IO.Directory]::Delete("\\?\$([IO.Path]::GetFullPath($percorso))", $true)
+}
+
+# I programmi avviati con il Node di questa installazione: l'interfaccia, i
+# comandi e il servizio.
+function Processi-Continuity([string]$dati) {
+  $node = [IO.Path]::GetFullPath((Join-Path $dati 'node\node.exe'))
+  @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+      Where-Object { $_.ExecutablePath -and ([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $node) })
 }
 
 # Il comando «continuity» per PowerShell e il Prompt dei comandi. Un solo

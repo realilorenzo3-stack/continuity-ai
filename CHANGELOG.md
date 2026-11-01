@@ -4,6 +4,16 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.0 — 2026-11-01
+
+Prima versione stabile di Continuity 2.0, per macOS, Linux e Windows (senza WSL).
+
+- **Il lavoro arriva sempre nella tua cartella.** Quando le verifiche del progetto (per esempio `npm test`) duravano più di circa un secondo, l'interfaccia lasciava il turno prima della sua fine. Il lavoro restava così nella copia, senza consegna e senza avviso, e serviva `/applica`. Ora il turno si segue fino alla fine, verifiche comprese.
+- **Windows: installazione, aggiornamento e disinstallazione con Continuity aperto.** Se Continuity è aperto in un'altra finestra, lo dicono subito e non toccano niente. Prima la disinstallazione fermava il servizio, la finestra aperta lo faceva ripartire, e tutto si fermava a metà. Fermano anche un servizio rimasto acceso senza il suo file di stato. Tolgono anche le cartelle con percorsi oltre i 260 caratteri.
+- **Limiti noti su Windows:**
+  - Dentro la sandbox di Codex alcuni programmi Node non possono avviare altri processi: certe build e i test con `vite` o `vitest` lanciati da Codex non riescono. Codex lo vede e prosegue. Le verifiche di Continuity girano fuori dalla sandbox, quindi i test del progetto vengono comunque controllati a fine turno. Claude Code non ha questo limite.
+  - Il primo avvio dopo l'installazione richiede qualche secondo in più (fra 10 e 30), perché l'interfaccia si prepara una volta sola. Le aperture successive sono pronte in circa 2 secondi.
+
 ## 2.0.0-beta.18 — 2026-10-31
 
 - **Windows senza WSL.** Da PowerShell, `irm https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.ps1 | iex` installa Continuity direttamente su Windows, con il pacchetto pronto per Windows, in pochi secondi. Il programma porta il suo Node, quindi non serve installarlo. Non serve l'amministratore. Mette il comando `continuity` nel PATH e installa Codex e Claude Code se mancano. Funzionano anche `continuity update` (con `--indietro`) e `continuity uninstall` (con `--all`). WSL non serve più.
