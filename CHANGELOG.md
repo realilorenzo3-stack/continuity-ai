@@ -4,6 +4,11 @@ Ogni versione pubblicata, dalla più recente. Le versioni con «-beta» sono ant
 
 ## Prossima versione
 
+## 2.0.1 — 2026-11-01
+
+- **README:** stato della versione 2.0 per macOS, Linux e Windows, link al sito, limiti noti aggiornati per sistema.
+- **Repository pubblica: fine riga uguali su tutti i sistemi.** Il file `.gitattributes` ora è pubblicato: le copie scaricate su Windows hanno le stesse fine riga di Mac e Linux.
+
 ## 2.0.0 — 2026-11-01
 
 Prima versione stabile di Continuity 2.0, per macOS, Linux e Windows (senza WSL).

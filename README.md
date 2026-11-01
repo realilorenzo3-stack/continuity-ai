@@ -31,7 +31,7 @@ Continuity is provided "as is", without warranties, to the extent permitted by l
 
 Continuity è uno strumento da terminale per lavorare con più AI sullo stesso progetto. Codex e Claude Code con i tuoi abbonamenti, i servizi gratuiti con le tue chiavi (Groq, Google AI Studio, NVIDIA, Mistral, Cloudflare, Cohere…) e un modello sul tuo computer con Ollama: tutte leggono, scrivono e modificano i file allo stesso modo. Quando un'AI esaurisce i crediti, il lavoro passa da solo alla successiva, che riprende con la stessa conversazione e gli stessi file, senza che tu rispieghi nulla.
 
-**Stato:** versione 2.0, anteprima pubblica. Novità di ogni versione: [CHANGELOG.md](CHANGELOG.md). L'interfaccia è in inglese, oppure in italiano con `/linguaggio`.
+**Stato:** versione 2.0, per macOS, Linux e Windows. Sito: [continuity-orchestrator.com](https://continuity-orchestrator.com). Novità di ogni versione: [CHANGELOG.md](CHANGELOG.md). L'interfaccia è in inglese, oppure in italiano con `/linguaggio`.
 
 ## Le AI e come lavorano insieme
 
@@ -117,8 +117,9 @@ Node 26.4 o più recente (toolchain della 2.0: Node 26.10.0), pnpm 10.17.1. Per 
 
 ## Limiti noti
 
-- Linux e Windows sono in anteprima (Windows senza WSL dal 31 ottobre 2026; su Windows Claude Code non ha sandbox e chiede il permesso per ogni comando): lavori aperti in [piattaforme/linux-windows/CONTESTO_LAVORI.md](piattaforme/linux-windows/CONTESTO_LAVORI.md).
-- Non provato: esaurimento dentro un sotto-agente, pilot statistico, macchina vergine, progetti molto grandi, dipendenze su un disco diverso (senza clonazione APFS), interruzione a metà dell'apertura di una sessione.
+- Su Windows Claude Code non ha una sandbox: chiede il permesso per ogni comando, oppure lavora libero se lo scegli con `/permessi`. Codex usa la sandbox di Windows senza privilegi di amministratore: alcune build e alcuni test lanciati da Codex possono non riuscire, mentre le verifiche di Continuity girano fuori dalla sandbox.
+- Su Linux, senza `bubblewrap` e `socat` (o con AppArmor che li blocca) Claude Code chiede il permesso per ogni comando: `continuity setup` dice come installarli.
+- Non provato: esaurimento dentro un sotto-agente, progetti molto grandi, dipendenze su un disco diverso (senza clonazione APFS), interruzione a metà dell'apertura di una sessione.
 - Dentro la sandbox le AI non possono avviare un browser (Chromium e WebKit si chiudono): le verifiche nel browser le esegue Continuity, che passa all'AI le ultime righe degli esiti falliti.
 - Le skill del progetto (`.claude/skills`) non vengono caricate per Claude, per sicurezza; agenti e istruzioni del progetto sì.
 - Il confine è la sandbox di ciascun CLI (Codex `workspace-write` con rete; Claude con la sua sandbox del terminale, la cache dei pacchetti e la rete aperta dalla versione 2.1.186 di Claude Code, un elenco di siti di sviluppo prima). I comandi Git che cambiano la storia sono vietati e, se avvengono, Continuity riporta la copia al punto di partenza del turno.

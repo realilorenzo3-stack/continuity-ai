@@ -8,7 +8,40 @@ File momentaneo (30 ottobre 2026). È la lista dei lavori aperti di questa distr
 - `piattaforme/linux-windows/LEGGIMI.md`;
 - le ultime voci di `docs/CONTEXT.md`.
 
-## Dove siamo
+## Stato al 1 novembre 2026: pubblicata la 2.0.0 stabile
+
+**Per chi riprende il lavoro (un'altra AI o Lorenzo):**
+- **Versione:** la 2.0.0, pubblicata con `pnpm rilascio 2.0.0` (commit «Versione 2.0.0», etichetta `v2.0.0`).
+  - Pagina pubblica: https://github.com/realilorenzo3-stack/continuity-ai/releases/tag/v2.0.0
+  - Contiene i pacchetti pronti per macOS (arm64, x64), Linux (x64, arm64) e Windows (win32-x64).
+- **Installazione:**
+  - Windows, da PowerShell: `irm https://raw.githubusercontent.com/realilorenzo3-stack/continuity-ai/main/scripts/install.ps1 | iex`;
+  - macOS e Linux: il comando con `install.sh` scritto nel README.
+- **Windows nativo, senza WSL (lavoro 7):** fatto e collaudato sul PC di Lorenzo:
+  - installazione;
+  - configurazione;
+  - turni con Codex e Claude;
+  - consegna, `/pubblica`, allegati;
+  - aggiornamento e ritorno indietro;
+  - disinstallazione.
+
+  I dettagli sono nelle voci del 31 ottobre e del 1 novembre di `docs/CONTEXT.md`.
+- **Repository:** il lavoro è tutto su GitHub, ramo `main`. Prima di cominciare: `git pull`.
+- **Dal 1 novembre le sezioni qui sotto sono storiche:**
+  - i lavori 2 e 3 (WSL) sono superati dal nativo;
+  - il lavoro 1 riguarda solo chi sviluppa dentro WSL;
+  - il lavoro 7 è chiuso tranne i limiti noti.
+- **Prossimi lavori possibili, in ordine:**
+  1. **Sandbox di Codex «elevated» su Windows.** Con «unelevated» (quella usata ora) certe build e i test con vite o vitest lanciati da Codex non riescono. Le verifiche di Continuity girano fuori dalla sandbox. «elevated» richiede una configurazione una tantum come amministratore e non è provata: serve il consenso di Lorenzo.
+  2. **Primo avvio più rapido dopo l'installazione:** oggi 10–30 s, poi circa 2 s.
+  3. **Collaudo indipendente** (lavoro 6) su Windows, Ubuntu e macOS puliti: era previsto prima della stabile, ma Lorenzo ha deciso di pubblicare dopo le sue prove.
+  4. **Interfaccia nel Windows Terminal** (lavoro 7, «Ancora aperto»): mouse, trascinamento di file, ctrl+V, da provare a mano.
+  5. **Revisione dei messaggi** (lavoro 5) e **Linux** (lavoro 4).
+- **Strumenti di prova Windows:** stanno fuori dalla repo, nello scratchpad della sessione che li ha usati, e non sono conservati.
+  - Per pilotare l'interfaccia in un terminale vero servono `@lydell/node-pty` e `@xterm/headless`.
+  - Per due installazioni sullo stesso PC serve una porta diversa con `PORT`, perché la 4317 è condivisa.
+
+## Dove siamo (storico, fino al 31 ottobre)
 
 - **Ubuntu (prove di Lorenzo, 29–30 ottobre).** Installazione con un comando, aggiornamento, configurazione iniziale e `/collega` funzionano. Corretti strada facendo:
   - il PATH nel terminale già aperto;
@@ -125,7 +158,7 @@ Provati davvero sul PC di Lorenzo.
 
 **Ancora aperto:**
 - [ ] **Interfaccia nel Windows Terminal di Lorenzo:** colori, mouse, tasti, ctrl+V, trascinamento di file, la finestra «Apri».
-- [ ] **Primo rilascio con il pacchetto Windows:** alla prima versione vanno visti il lavoro `pacchetti` di `versione.yml` su Windows e l'installazione con `irm … | iex` dalla pagina pubblica.
+- [x] **Primo rilascio con il pacchetto Windows:** 2.0.0-beta.18 (31 ottobre) e 2.0.0 (1 novembre), con il pacchetto `win32-x64` e l'installazione `irm … | iex` dalla pagina pubblica.
 - [ ] **Limite noto:** a fine turno, su Windows non si ritrovano i processi lasciati in sottofondo nella copia (la cartella di lavoro di un processo non si legge senza accesso nativo). I processi dell'AI si fermano con il suo albero (`taskkill /T`).
 - [ ] **Limite noto:** un progetto estratto con le fine riga di Windows (CRLF) risulta tutto modificato alla prima sessione. Funziona, perché quello stato entra nella copia.
 

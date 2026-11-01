@@ -1,0 +1,12 @@
+# Fine riga sempre LF, anche nelle copie scaricate su Windows: con le fine riga
+# di Windows gli script per Linux e WSL (.sh) non partono (30 ottobre 2026,
+# sviluppo dal PC Windows di Lorenzo).
+* text=auto eol=lf
+# Gli script di cmd.exe (Windows nativo) vogliono le fine riga di Windows.
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

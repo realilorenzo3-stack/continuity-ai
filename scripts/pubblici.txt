@@ -5,6 +5,7 @@
 # Un percorso per riga; le cartelle si copiano con i soli file tracciati da Git.
 .github/workflows/prove.yml
 .github/workflows/versione.yml
+.gitattributes
 .gitignore
 .node-version
 .prettierignore

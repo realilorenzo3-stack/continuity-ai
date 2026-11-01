@@ -181,8 +181,11 @@ it("la copia pubblica: solo programma, prove, script e documenti per gli utenti;
   execFileSync("node", ["scripts/rilascio.mjs", "3.4.5-beta.1", "--prova", cartella, "--senza-prove"], { stdio: "ignore" });
   for (const interno of ["AGENTS.md", "CONTINUITY_2.0.md", "docs/CONTEXT.md", "docs/MARKET_RESEARCH.md", "docs/legale", "agents", "prototipi", "bin"])
     expect(existsSync(join(cartella, interno)), interno).toBe(false);
-  for (const pubblico of ["LICENSE", "NOTICE", "README.md", "PRIVACY.md", "SECURITY.md", "CHANGELOG.md", "src/cli/main.ts", "scripts/install.sh", "scripts/install.ps1", ".github/workflows/versione.yml"])
+  for (const pubblico of ["LICENSE", "NOTICE", "README.md", "PRIVACY.md", "SECURITY.md", "CHANGELOG.md", "src/cli/main.ts", "scripts/install.sh", "scripts/install.ps1", ".github/workflows/versione.yml", ".gitattributes"])
     expect(existsSync(join(cartella, pubblico)), pubblico).toBe(true);
+  // Le fine riga LF anche nelle copie su Windows: senza, le prove pubbliche
+  // su Windows fallivano (2.0.0, 1 novembre).
+  expect(readFileSync(join(cartella, ".gitattributes"), "utf8")).toMatch(/eol=lf/);
   expect(JSON.parse(readFileSync(join(cartella, "package.json"), "utf8")).version).toBe("3.4.5-beta.1");
   expect(readFileSync(join(cartella, "CHANGELOG.md"), "utf8")).toMatch(/## Prossima versione\n\n## 3\.4\.5-beta\.1 — \d{4}-\d{2}-\d{2}\n\n\S/);
   // La versione deve avere un formato valido.
